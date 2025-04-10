@@ -32,11 +32,19 @@ Optionale Erweiterungen:
 
 Speicherung von Daten in einer Datenbank
 
-Zeitübersicht/Termine Abgabe zum 01.06.2025:
-Mittwoch|Mittwoch|Mittwoch|Mittwoch|Mittwoch|Mittwoch|Mittwoch|Mittwoch|Mittwoch|Mittwoch|Mittwoch|
-02.04.25|09.04.25|16.04.25|23.04.25|30.04.25|07.05.25|14.05.25|21.05.25|28.05.25|04.06.25|11.06.25|
-Projekt |   Osterferien   |        | frei   |        |        |        |Fertig- |Präsi-  |Präsen- |
-START   |                 |        |        |        |        |        |stellung|start   |tation  |
+# Zeitübersicht/Termine Abgabe zum 01.06.2025
+
+### Wichtige Termine:
+
+- **02.04.25** – Projektstart  
+- **09.04.25 & 16.04.25** – Osterferien 🏖️  
+- **23.04.25** – Frei  
+- **28.05.25** – Fertigstellung des Projekts  
+- **04.06.25** – Präsentationsstart  
+- **11.06.25** – Präsentation  
+
+### Regelmäßige Meetings:
+Das Projektteam trifft sich jeden **Mittwoch** zur Besprechung.
 
 Bewertung:
 • Teamfähigkeit (Motivation und Engagement, Kommunikationsfähigkeit,
