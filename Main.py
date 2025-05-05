@@ -161,11 +161,16 @@ class MQTTExplorer:
     def on_message(self, _client, _userdata, msg):
         """Handle received messages"""
         current_time = datetime.now().strftime("%H:%M:%S")
-        message = msg.payload.decode()
-        
+        try:
+            # Attempt to decode the payload as UTF-8
+            message = msg.payload.decode('utf-8')
+        except UnicodeDecodeError:
+            # Handle non-UTF-8 payloads
+            message = f"<Binary Data: {msg.payload.hex()}>"
+
         # Save to database
         self.save_message(current_time, msg.topic, message)
-        
+
         # Display in UI
         self.log_message(f"{msg.topic}: {message}")
 
