@@ -3,7 +3,7 @@ from tkinter import ttk, scrolledtext
 import paho.mqtt.client as mqtt
 from datetime import datetime
 import sqlite3
-import json
+import threading  # Added import for threading
 
 class MQTTExplorer:
     def __init__(self, root):
@@ -16,6 +16,9 @@ class MQTTExplorer:
         
         # Initialize database
         self.init_database()
+        
+        # Initialize threading lock for database
+        self.db_lock = threading.Lock()
         
         # Connection Frame
         self.conn_frame = ttk.LabelFrame(root, text="Connection Settings", padding="5")
@@ -82,7 +85,7 @@ class MQTTExplorer:
 
     def init_database(self):
         """Initialize SQLite database"""
-        self.conn = sqlite3.connect('mqtt_messages.db')
+        self.conn = sqlite3.connect('mqtt_messages.db', check_same_thread=False)
         c = self.conn.cursor()
         c.execute('''CREATE TABLE IF NOT EXISTS messages
                     (timestamp TEXT, topic TEXT, message TEXT)''')
@@ -90,9 +93,10 @@ class MQTTExplorer:
 
     def save_message(self, timestamp, topic, message):
         """Save message to database"""
-        c = self.conn.cursor()
-        c.execute("INSERT INTO messages VALUES (?,?,?)", (timestamp, topic, message))
-        self.conn.commit()
+        with self.db_lock:
+            c = self.conn.cursor()
+            c.execute("INSERT INTO messages VALUES (?,?,?)", (timestamp, topic, message))
+            self.conn.commit()
 
     def connect(self):
         try:
@@ -142,7 +146,7 @@ class MQTTExplorer:
         self.messages.insert('end', f"[{current_time}] {message}\n")
         self.messages.see('end')
 
-    def on_connect(self, client, userdata, flags, rc):
+    def on_connect(self, _client, _userdata, _flags, rc):
         if rc == 0:
             self.log_message("Connected successfully")
             self.status_label.config(text="Status: Connected", foreground="green")
@@ -150,11 +154,11 @@ class MQTTExplorer:
             self.log_message(f"Connection failed with code {rc}")
             self.status_label.config(text="Status: Error", foreground="red")
 
-    def on_disconnect(self, client, userdata, rc):
+    def on_disconnect(self, _client, _userdata, _rc):
         self.log_message("Disconnected from broker")
         self.status_label.config(text="Status: Disconnected", foreground="red")
 
-    def on_message(self, client, userdata, msg):
+    def on_message(self, _client, _userdata, msg):
         """Handle received messages"""
         current_time = datetime.now().strftime("%H:%M:%S")
         message = msg.payload.decode()
