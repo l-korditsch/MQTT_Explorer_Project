@@ -4,6 +4,7 @@ import paho.mqtt.client as mqtt
 from datetime import datetime
 import sqlite3
 import threading  # Added import for threading
+import ssl
 
 class MQTTExplorer:
     def __init__(self, root):
@@ -100,25 +101,40 @@ class MQTTExplorer:
 
     def connect(self):
         try:
-            # Update default broker to test.mosquitto.org
-            if self.broker.get() == "localhost":
-                self.broker.delete(0, tk.END)
-                self.broker.insert(0, "test.mosquitto.org")
+            broker = self.broker.get()
+            port = int(self.port.get())
             
-            # Set clean session
-            self.client = mqtt.Client(clean_session=True)
+            # Disconnect existing client if any
+            if hasattr(self, 'client'):
+                self.client.loop_stop()
+                self.client.disconnect()
+            
+            # Create new client instance with clean session
+            client_id = f'python-mqtt-{datetime.now().strftime("%H%M%S")}'
+            self.client = mqtt.Client(client_id=client_id, clean_session=True)
+            
+            # Set callbacks
             self.client.on_connect = self.on_connect
             self.client.on_message = self.on_message
             self.client.on_disconnect = self.on_disconnect
             
-            # Connect with keepalive of 60 seconds
-            self.client.connect(self.broker.get(), int(self.port.get()), 60)
-            self.client.loop_start()
+            # Try SSL for secure connection if using port 8883
+            if port == 8883:
+                self.client.tls_set(cert_reqs=ssl.CERT_NONE)  # Don't verify certificate
+                self.client.tls_insecure_set(True)  # Don't verify hostname
+                
+            # Increase timeouts for more stability
+            self.client._connect_timeout = 30
+            self.client._keepalive = 60
             
-            # Update status immediately
+            # Update status before connecting
             self.status_label.config(text="Status: Connecting...", foreground="orange")
-            self.log_message(f"Connecting to {self.broker.get()}:{self.port.get()}...")
+            self.log_message(f"Connecting to {broker}:{port}...")
             
+            # Try to connect
+            self.client.connect(broker, port)
+            self.client.loop_start()
+                
         except Exception as e:
             self.log_message(f"Connection failed: {str(e)}")
             self.status_label.config(text="Status: Error", foreground="red")
@@ -150,17 +166,39 @@ class MQTTExplorer:
         if rc == 0:
             self.log_message("Connected successfully")
             self.status_label.config(text="Status: Connected", foreground="green")
+            # Auto-subscribe to test topic
+            self.client.subscribe("test/#")
+            self.log_message("Auto-subscribed to test/#")
         else:
-            self.log_message(f"Connection failed with code {rc}")
-            self.status_label.config(text="Status: Error", foreground="red")
+            error_messages = {
+                1: "Connection refused - incorrect protocol version",
+                2: "Connection refused - invalid client identifier",
+                3: "Connection refused - server unavailable",
+                4: "Connection refused - bad username or password",
+                5: "Connection refused - not authorized"
+            }
+            error = error_messages.get(rc, f"Connection failed with code {rc}")
+            self.log_message(error)
+            self.status_label.config(text=f"Status: Error ({rc})", foreground="red")
 
-    def on_disconnect(self, _client, _userdata, _rc):
-        self.log_message("Disconnected from broker")
+    def on_disconnect(self, _client, _userdata, rc):
+        disconnect_reasons = {
+            0: "Clean disconnect",
+            1: "Connection refused - incorrect protocol version",
+            2: "Connection refused - invalid client identifier",
+            3: "Connection refused - server unavailable",
+            4: "Connection refused - bad username or password",
+            5: "Connection refused - not authorized",
+            6: "Connection lost",
+            7: "Connection timed out or network error"
+        }
+        reason = disconnect_reasons.get(rc, f"Unknown error (code={rc})")
+        self.log_message(f"Disconnected: {reason}")
         self.status_label.config(text="Status: Disconnected", foreground="red")
 
     def on_message(self, _client, _userdata, msg):
         """Handle received messages"""
-        current_time = datetime.now().strftime("%H:%M:%S")
+        current_time = datetime.now().strftime("%H%M%S")
         try:
             # Attempt to decode the payload as UTF-8
             message = msg.payload.decode('utf-8')
