@@ -181,6 +181,19 @@ class MQTTExplorer:
         if hasattr(self, 'client'):
             self.client.loop_stop()
             self.client.disconnect()
+#TODO Add function to save used topics to a file
+#TODO Add function to load used topics from a file
+#TODO Add function to save used brokers to a file
+#TODO Add function to load used brokers from a file
+#TODO Add function to save used ports to a file
+#TODO Add function to load used ports from a file
+#TODO Prettefy the whole interface
+#TODO Add a function to clear the messages
+#TODO Add a function to clear the database
+#TODO Add a function to show the database
+#TODO Add a function to show the database in the UI
+#TODO Add a function to show the database in a new window
+#TODO Add a function to show the database in a new window with a table
 
 if __name__ == "__main__":
     root = tk.Tk()
