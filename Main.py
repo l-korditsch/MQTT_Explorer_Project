@@ -1,7 +1,7 @@
 import json
 import os
 import tkinter as tk
-from tkinter import StringVar, ttk, scrolledtext
+from tkinter import ttk, scrolledtext
 import paho.mqtt.client as mqtt
 from datetime import datetime
 import sqlite3
@@ -51,14 +51,8 @@ class MQTTExplorer:
         self.sub_frame.grid(row=1, column=0, padx=5, pady=5, sticky="nsew")
         
         ttk.Label(self.sub_frame, text="Topic:").grid(row=0, column=0, padx=5, pady=5)
+        self.topic = ttk.Entry(self.sub_frame, width=30)
         self.topic.insert(0, "#")
-
-        # Store available topics
-        self.topic_var = StringVar()
-        self.topic = ttk.Combobox(self.sub_frame, textvariable=self.topic_var, width=30)
-        # Load topics from file if available
-        self.loadTopicsFromFile()
-
         self.topic.grid(row=0, column=1, padx=5, pady=5)
         
         self.subscribe_btn = ttk.Button(self.sub_frame, text="Subscribe", command=self.subscribe)
@@ -258,20 +252,11 @@ class MQTTExplorer:
 
         except Exception as e:
             self.log_message(f"Failed to save topic: {e}")
-    
-    def loadTopicsFromFile(self, filename="topics.json"):
-        if os.path.exists(filename):
-            try:
-                with open(filename, "r") as f:
-                    topics = json.load(f)
-                    if isinstance(topics, list):
-                        self.topic['values'] = topics
-            except Exception as e:
-                self.log_message(f"Failed to load topics: {e}")
 
         
         
 
+#TODO Add function to save used topics to a file
 #TODO Add function to load used topics from a file
 #TODO Add function to save used brokers to a file
 #TODO Add function to load used brokers from a file
