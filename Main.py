@@ -43,6 +43,10 @@ class MQTTExplorer:
         self.connect_btn = ttk.Button(self.conn_frame, text="Connect", command=self.connect)
         self.connect_btn.grid(row=3, column=0, columnspan=2, pady=5)
 
+        #Disconnect button
+        self.disconnect_btn = ttk.Button(self.conn_frame, text="Disconnect", command=self.disconnect)
+        self.disconnect_btn.grid(row=4, column=0, columnspan=2, pady=5)
+
         # Subscribe Frame
         self.sub_frame = ttk.LabelFrame(root, text="Subscribe", padding="5")
         self.sub_frame.grid(row=1, column=0, padx=5, pady=5, sticky="nsew")
@@ -52,8 +56,13 @@ class MQTTExplorer:
         self.topic.insert(0, "#")
         self.topic.grid(row=0, column=1, padx=5, pady=5)
         
+        # Subscribe button
         self.subscribe_btn = ttk.Button(self.sub_frame, text="Subscribe", command=self.subscribe)
         self.subscribe_btn.grid(row=1, column=0, columnspan=2, pady=5)
+
+        # Unsubscribe button
+        self.unsubscribe_btn = ttk.Button(self.sub_frame, text="Unsubscribe", command=self.unsubscribe)
+        self.unsubscribe_btn.grid(row=1, column=2, columnspan=2, pady=5)
 
         # Publish Frame
         self.pub_frame = ttk.LabelFrame(root, text="Publish", padding="5")
@@ -74,7 +83,7 @@ class MQTTExplorer:
         self.msg_frame = ttk.LabelFrame(root, text="Messages", padding="5")
         self.msg_frame.grid(row=3, column=0, padx=5, pady=5, sticky="nsew")
         
-        self.messages = scrolledtext.ScrolledText(self.msg_frame, height=10, width=50)
+        self.messages = scrolledtext.ScrolledText(self.msg_frame, height=10, width=100)
         self.messages.grid(row=0, column=0, padx=5, pady=5, sticky="nsew")
         
         # MQTT Client
@@ -122,6 +131,15 @@ class MQTTExplorer:
         except Exception as e:
             self.log_message(f"Connection failed: {str(e)}")
             self.status_label.config(text="Status: Error", foreground="red")
+
+    def disconnect(self):
+        """Disconnect from the broker"""
+        if self.client.is_connected():
+            self.client.disconnect()
+            self.status_label.config(text="Status: Disconnected", foreground="red")
+            self.log_message("Disconnected from broker")
+        else:
+            self.log_message("Error: Not connected to broker")
     
     def subscribe(self):
         if not self.client.is_connected():
@@ -130,6 +148,18 @@ class MQTTExplorer:
         topic = self.topic.get()
         self.client.subscribe(topic)
         self.log_message(f"Subscribed to {topic}")
+
+    def unsubscribe(self):
+        if not self.client.is_connected():
+            self.log_message("Error: Not connected to broker")
+            return
+        topic = self.topic.get()
+        if topic == "#":
+            self.disconnect()
+            self.log_message(f"Error: Cannot unsubscribe from {topic} topics")
+            return
+        self.client.unsubscribe(topic)
+        self.log_message(f"Unsubscribed from {topic}")
 
     def publish(self):
         if not self.client.is_connected():
@@ -181,6 +211,12 @@ class MQTTExplorer:
         if hasattr(self, 'client'):
             self.client.loop_stop()
             self.client.disconnect()
+
+#TODO Add auto scaling of HUD to window size
+#TODO add a disconnect button
+#TODO Add a unsubscribe button
+#TODO Add a button to disable autoscroll
+#TODO Add a button to enable autoscroll maybe same button as above
 #TODO Add function to save used topics to a file
 #TODO Add function to load used topics from a file
 #TODO Add function to save used brokers to a file
@@ -194,6 +230,7 @@ class MQTTExplorer:
 #TODO Add a function to show the database in the UI
 #TODO Add a function to show the database in a new window
 #TODO Add a function to show the database in a new window with a table
+
 
 if __name__ == "__main__":
     root = tk.Tk()
