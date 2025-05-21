@@ -1,1 +1,8 @@
-Was geht
+[
+  "wads",
+  "Wer",
+  "Wo",
+  "Wie",
+  "Weshalb",
+  "Warum"
+]

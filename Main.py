@@ -1,3 +1,5 @@
+import json
+import os
 import tkinter as tk
 from tkinter import ttk, scrolledtext
 import paho.mqtt.client as mqtt
@@ -229,16 +231,21 @@ class MQTTExplorer:
             self.log_message("No topic to store.")
             return
         try:
-            # Read existing topics
-            try:
+            # Load existing topics from JSON file, or start a new list
+            if os.path.exists(filename):
                 with open(filename, "r") as file:
-                    existing = set(line.strip() for line in file.readlines())
-            except FileNotFoundError:
-                existing = set()
+                    try:
+                        topics = json.load(file)
+                    except json.JSONDecodeError:
+                        topics = []
+            else:
+                topics = []
 
-            if topic not in existing:
-                with open(filename, "a") as file:
-                    file.write(topic + "\n")
+            # Add the topic if not already present
+            if topic not in topics:
+                topics.append(topic)
+                with open(filename, "w") as file:
+                    json.dump(topics, file, indent=2)
                 self.log_message(f"Saved new topic '{topic}' to {filename}")
             else:
                 self.log_message(f"Topic '{topic}' already saved")
