@@ -140,10 +140,14 @@ class MQTTExplorer:
             self.status_label.config(text="Status: Error", foreground="red")
     
     def subscribe(self):
+        topic = self.topic.get()
+        # Store used topic to file
+        self.storeTopicToFile(topic)
+
         if not self.client.is_connected():
             self.log_message("Error: Not connected to broker")
             return
-        topic = self.topic.get()
+
         self.client.subscribe(topic)
         self.log_message(f"Subscribed to {topic}")
 
@@ -219,6 +223,32 @@ class MQTTExplorer:
         if hasattr(self, 'client'):
             self.client.loop_stop()
             self.client.disconnect()
+    
+    def storeTopicToFile(self, topic, filename="topics.txt"):
+        if not topic:
+            self.log_message("No topic to store.")
+            return
+        try:
+            # Read existing topics
+            try:
+                with open(filename, "r") as file:
+                    existing = set(line.strip() for line in file.readlines())
+            except FileNotFoundError:
+                existing = set()
+
+            if topic not in existing:
+                with open(filename, "a") as file:
+                    file.write(topic + "\n")
+                self.log_message(f"Saved new topic '{topic}' to {filename}")
+            else:
+                self.log_message(f"Topic '{topic}' already saved")
+
+        except Exception as e:
+            self.log_message(f"Failed to save topic: {e}")
+
+        
+        
+
 #TODO Add function to save used topics to a file
 #TODO Add function to load used topics from a file
 #TODO Add function to save used brokers to a file
