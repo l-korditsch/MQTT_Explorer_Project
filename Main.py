@@ -39,8 +39,9 @@ class MQTTExplorer:
         self.broker.grid(row=0, column=1, padx=5, pady=5)
         
         ttk.Label(self.conn_frame, text="Port:").grid(row=1, column=0, padx=5, pady=5)
-        self.port = ttk.Entry(self.conn_frame, width=30)
-        self.port.insert(0, "1883")
+        self.port = ttk.Combobox(self.conn_frame, width=30)
+        self.port['values'] = self.loadPortsFromFile()
+        self.port.set("1883")
         self.port.grid(row=1, column=1, padx=5, pady=5)
         
         # Status indicator
@@ -123,6 +124,9 @@ class MQTTExplorer:
         try:
             broker = self.broker.get()
             port = int(self.port.get())
+            # Store port
+            self.storePortToFile(str(port)) 
+            self.refreshPortCombobox()
 
             # Store broker in file
             self.storeBrokerToFile(broker)
@@ -358,6 +362,47 @@ class MQTTExplorer:
         brokers = self.loadBrokersFromFile()
         self.broker['values'] = brokers
 
+    def storePortToFile(self, port, filename="ports.txt"):
+        if not port:
+            self.log_message("No port to store.")
+            return
+        try:
+            if os.path.exists("./Storage/" + filename):
+                with open("./Storage/" + filename, "r") as file:
+                    try:
+                        ports = json.load(file)
+                    except json.JSONDecodeError:
+                        ports = []
+            else:
+                ports = []
+
+            if port not in ports:
+                ports.append(port)
+                with open("./Storage/" + filename, "w") as file:
+                    json.dump(ports, file, indent=2)
+                self.log_message(f"Saved new port '{port}' to {filename}")
+            else:
+                self.log_message(f"Port '{port}' already saved")
+        except Exception as e:
+            self.log_message(f"Failed to save port: {e}")
+    
+    def loadPortsFromFile(self, filename="ports.txt"):
+        if not os.path.exists("./Storage/" + filename):
+            return []
+        try:
+            with open("./Storage/" + filename, "r") as file:
+                ports = json.load(file)
+                return ports if isinstance(ports, list) else []
+        except Exception:
+            return []
+        
+    def refreshPortCombobox(self):
+        ports = self.loadPortsFromFile()
+        self.port['values'] = ports
+
+
+
+
 
 
 
@@ -372,8 +417,6 @@ class MQTTExplorer:
 #TODO Add a unsubscribe button
 #TODO Add a button to disable autoscroll
 #TODO Add a button to enable autoscroll maybe same button as above
-#TODO Add function to save used ports to a file
-#TODO Add function to load used ports from a file
 #TODO Prettefy the whole interface
 #TODO Add a function to clear the messages
 #TODO Add a function to clear the database

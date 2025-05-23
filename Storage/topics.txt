@@ -7,5 +7,6 @@
   "Warum",
   "Ich will nicht mehr",
   "Ich will nicht mehr warum",
-  "Test warum wie so was"
+  "Test warum wie so was",
+  "wd#"
 ]

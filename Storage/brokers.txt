@@ -1,5 +1,7 @@
 [
   "localhostwd",
   "Was.com",
-  "wdw"
+  "wdw",
+  "localhost2",
+  "localhost"
 ]
