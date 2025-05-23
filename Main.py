@@ -55,8 +55,12 @@ class MQTTExplorer:
         self.sub_frame.grid(row=1, column=0, padx=5, pady=5, sticky="nsew")
         
         ttk.Label(self.sub_frame, text="Topic:").grid(row=0, column=0, padx=5, pady=5)
-        self.topic = ttk.Entry(self.sub_frame, width=30)
-        self.topic.insert(0, "#")
+        
+        # Combobox with existing topics
+        self.topic = ttk.Combobox(self.sub_frame, width=30)
+        self.topic['values'] = self.loadTopicsFromFile()
+        self.topic.set("#")
+
         self.topic.grid(row=0, column=1, padx=5, pady=5)
         
         # Subscribe button
@@ -277,11 +281,34 @@ class MQTTExplorer:
                 with open(filename, "w") as file:
                     json.dump(topics, file, indent=2)
                 self.log_message(f"Saved new topic '{topic}' to {filename}")
+                self.refreshTopicCombobox()
             else:
                 self.log_message(f"Topic '{topic}' already saved")
 
         except Exception as e:
             self.log_message(f"Failed to save topic: {e}")
+
+    def loadTopicsFromFile(self, filename="topics.txt"):
+        if not os.path.exists(filename):
+            return []
+
+        try:
+            with open(filename, "r") as file:
+                topics = json.load(file)
+                if isinstance(topics, list):
+                    return topics
+                else:
+                    self.log_message("Invalid format in topics file.")
+                    return []
+        except (json.JSONDecodeError, Exception) as e:
+            self.log_message(f"Failed to load topics: {e}")
+            return []
+        
+    def refreshTopicCombobox(self):
+        topics = self.loadTopicsFromFile()
+        self.topic['values'] = topics
+
+
 
         
         
@@ -292,7 +319,6 @@ class MQTTExplorer:
 #TODO Add a unsubscribe button
 #TODO Add a button to disable autoscroll
 #TODO Add a button to enable autoscroll maybe same button as above
-#TODO Add function to save used topics to a file
 #TODO Add function to load used topics from a file
 #TODO Add function to save used brokers to a file
 #TODO Add function to load used brokers from a file

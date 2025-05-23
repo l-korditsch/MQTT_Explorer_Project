@@ -4,5 +4,8 @@
   "Wo",
   "Wie",
   "Weshalb",
-  "Warum"
+  "Warum",
+  "Ich will nicht mehr",
+  "Ich will nicht mehr warum",
+  "Test warum wie so was"
 ]
