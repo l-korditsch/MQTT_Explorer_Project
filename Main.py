@@ -5,11 +5,14 @@ from tkinter import ttk, scrolledtext
 import paho.mqtt.client as mqtt
 from datetime import datetime
 import sqlite3
-import threading  # Added import for threading
+import threading
 import ssl
 
 class MQTTExplorer:
     def __init__(self, root):
+        # Ensure storage folder exists
+        os.makedirs("./Storage/", exist_ok=True)
+
         self.root = root
         self.root.title("MQTT Explorer")
         
@@ -29,8 +32,10 @@ class MQTTExplorer:
         
         # Broker settings
         ttk.Label(self.conn_frame, text="Broker:").grid(row=0, column=0, padx=5, pady=5)
-        self.broker = ttk.Entry(self.conn_frame, width=30)
-        self.broker.insert(0, "localhost")
+        self.broker = ttk.Combobox(self.conn_frame, width=30)
+        self.broker['values'] = self.loadBrokersFromFile()
+        self.broker.set("localhost")
+
         self.broker.grid(row=0, column=1, padx=5, pady=5)
         
         ttk.Label(self.conn_frame, text="Port:").grid(row=1, column=0, padx=5, pady=5)
@@ -118,6 +123,9 @@ class MQTTExplorer:
         try:
             broker = self.broker.get()
             port = int(self.port.get())
+
+            # Store broker in file
+            self.storeBrokerToFile(broker)
             
             # Disconnect existing client if any
             if hasattr(self, 'client'):
@@ -266,8 +274,8 @@ class MQTTExplorer:
             return
         try:
             # Load existing topics from JSON file, or start a new list
-            if os.path.exists(filename):
-                with open(filename, "r") as file:
+            if os.path.exists("./Storage/" + filename):
+                with open("./Storage/" + filename, "r") as file:
                     try:
                         topics = json.load(file)
                     except json.JSONDecodeError:
@@ -278,7 +286,7 @@ class MQTTExplorer:
             # Add the topic if not already present
             if topic not in topics:
                 topics.append(topic)
-                with open(filename, "w") as file:
+                with open("./Storage/" + filename, "w") as file:
                     json.dump(topics, file, indent=2)
                 self.log_message(f"Saved new topic '{topic}' to {filename}")
                 self.refreshTopicCombobox()
@@ -289,11 +297,11 @@ class MQTTExplorer:
             self.log_message(f"Failed to save topic: {e}")
 
     def loadTopicsFromFile(self, filename="topics.txt"):
-        if not os.path.exists(filename):
+        if not os.path.exists("./Storage/" + filename):
             return []
 
         try:
-            with open(filename, "r") as file:
+            with open("./Storage/" + filename, "r") as file:
                 topics = json.load(file)
                 if isinstance(topics, list):
                     return topics
@@ -308,6 +316,51 @@ class MQTTExplorer:
         topics = self.loadTopicsFromFile()
         self.topic['values'] = topics
 
+    def storeBrokerToFile(self, broker, filename="brokers.txt"):
+        if not broker:
+            self.log_message("No broker to store.")
+            return
+        try:
+            # Load existing brokers from file
+            if os.path.exists("./Storage/" + filename):
+                with open("./Storage/" + filename, "r") as file:
+                    try:
+                        brokers = json.load(file)
+                    except json.JSONDecodeError:
+                        brokers = []
+            else:
+                brokers = []
+
+            # Save new broker if not already in list
+            if broker not in brokers:
+                brokers.append(broker)
+                with open("./Storage/" + filename, "w") as file:
+                    json.dump(brokers, file, indent=2)
+                self.log_message(f"Saved new broker '{broker}' to {filename}")
+                self.refreshBrokerCombobox()
+            else:
+                self.log_message(f"Broker '{broker}' already saved")
+
+        except Exception as e:
+            self.log_message(f"Failed to save broker: {e}")
+
+    def loadBrokersFromFile(self, filename="brokers.txt"):
+        if not os.path.exists("./Storage/" + filename):
+            return []
+        try:
+            with open("./Storage/" + filename, "r") as file:
+                brokers = json.load(file)
+                return brokers if isinstance(brokers, list) else []
+        except Exception:
+            return []
+        
+    def refreshBrokerCombobox(self):
+        brokers = self.loadBrokersFromFile()
+        self.broker['values'] = brokers
+
+
+
+
 
 
         
@@ -319,9 +372,6 @@ class MQTTExplorer:
 #TODO Add a unsubscribe button
 #TODO Add a button to disable autoscroll
 #TODO Add a button to enable autoscroll maybe same button as above
-#TODO Add function to load used topics from a file
-#TODO Add function to save used brokers to a file
-#TODO Add function to load used brokers from a file
 #TODO Add function to save used ports to a file
 #TODO Add function to load used ports from a file
 #TODO Prettefy the whole interface
