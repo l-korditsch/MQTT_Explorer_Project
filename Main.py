@@ -553,7 +553,6 @@ class MQTTExplorer:
 #TODO timestamp in database prettefiy
 #TODO add date tot timestamp on db
 #TODO add possibility to press enter in text fields to substitute button press
-#TODO Add refresh for puplish topics
 
 if __name__ == "__main__":
     root = tk.Tk()
