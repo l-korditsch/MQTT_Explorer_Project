@@ -544,11 +544,6 @@ class MQTTExplorer:
 #TODO Add a button to disable autoscroll
 #TODO Add a button to enable autoscroll maybe same button as above
 #TODO Prettefy the whole interface
-#TODO Add a function to clear the database
-#TODO Add a function to show the database
-#TODO Add a function to show the database in the UI
-#TODO Add a function to show the database in a new window
-#TODO Add a function to show the database in a new window with a table
 
 if __name__ == "__main__":
     root = tk.Tk()
