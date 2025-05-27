@@ -309,6 +309,7 @@ class MQTTExplorer:
                     json.dump(topics, file, indent=2)
                 self.log_message(f"Saved new topic '{topic}' to {filename}")
                 self.refreshTopicCombobox()
+                self.refreshPubTopicCombobox()
             else:
                 self.log_message(f"Topic '{topic}' already saved")
 
@@ -334,6 +335,11 @@ class MQTTExplorer:
     def refreshTopicCombobox(self):
         topics = self.loadTopicsFromFile()
         self.topic['values'] = topics
+
+    def refreshPubTopicCombobox(self):
+        topics = self.loadTopicsFromFile()
+        self.pub_topic['values'] = topics
+
 
     def storeBrokerToFile(self, broker, filename="brokers.txt"):
         if not broker:
