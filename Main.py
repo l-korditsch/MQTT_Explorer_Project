@@ -544,6 +544,8 @@ class MQTTExplorer:
 #TODO Add a button to disable autoscroll
 #TODO Add a button to enable autoscroll maybe same button as above
 #TODO Prettefy the whole interface
+#TODO timestamp in database prettefiy
+#TODO add date tot timestamp on db
 
 if __name__ == "__main__":
     root = tk.Tk()
