@@ -546,6 +546,7 @@ class MQTTExplorer:
 #TODO Prettefy the whole interface
 #TODO timestamp in database prettefiy
 #TODO add date tot timestamp on db
+#TODO Add refresh for puplish topics
 
 if __name__ == "__main__":
     root = tk.Tk()
