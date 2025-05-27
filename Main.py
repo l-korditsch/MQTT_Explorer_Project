@@ -1,7 +1,7 @@
 import json
 import os
 import tkinter as tk
-from tkinter import ttk, scrolledtext
+from tkinter import ttk, scrolledtext, messagebox, filedialog
 import paho.mqtt.client as mqtt
 from datetime import datetime
 import sqlite3
@@ -10,562 +10,566 @@ import ssl
 
 class MQTTExplorer:
     def __init__(self, root):
-        # Autoscroll
-        self.autoscroll_enabled = True
-
-        # Ensure storage folder exists
-        os.makedirs("./Storage/", exist_ok=True)
-
         self.root = root
-        self.root.title("MQTT Explorer")
+        self.setup_ui()
+        self.setup_storage()
+        self.setup_database()
+        self.setup_mqtt()
+        self.setup_bindings()
         
-        # Configure main window
+    def setup_ui(self):
+        """Initialize the user interface"""
+        self.root.title("MQTT Explorer Pro")
+        self.root.geometry("800x700")
+        self.root.minsize(600, 500)
+        
+        # Configure main window grid
         self.root.columnconfigure(0, weight=1)
-        self.root.rowconfigure(3, weight=1)
+        self.root.rowconfigure(4, weight=1)
         
-        # Initialize database
-        self.init_database()
+        # Autoscroll setting
+        self.autoscroll_enabled = True
         
-        # Initialize threading lock for database
-        self.db_lock = threading.Lock()
+        # Create main interface
+        self.create_connection_frame()
+        self.create_subscribe_frame()
+        self.create_publish_frame()
+        self.create_controls_frame()
+        self.create_messages_frame()
         
-        # Connection Frame
-        self.conn_frame = ttk.LabelFrame(root, text="Connection Settings", padding="5")
-        self.conn_frame.grid(row=0, column=0, padx=5, pady=5, sticky="nsew")
+    def setup_storage(self):
+        """Initialize storage directory"""
+        os.makedirs("./Storage/", exist_ok=True)
         
-        # Broker settings
-        ttk.Label(self.conn_frame, text="Broker:").grid(row=0, column=0, padx=5, pady=5)
-        self.broker = ttk.Combobox(self.conn_frame, width=30)
-        self.broker['values'] = self.loadBrokersFromFile()
-        self.broker.set("localhost")
-
-        self.broker.grid(row=0, column=1, padx=5, pady=5)
-        
-        ttk.Label(self.conn_frame, text="Port:").grid(row=1, column=0, padx=5, pady=5)
-        self.port = ttk.Combobox(self.conn_frame, width=30)
-        self.port['values'] = self.loadPortsFromFile()
-        self.port.set("1883")
-        self.port.grid(row=1, column=1, padx=5, pady=5)
-        
-        # Status indicator
-        self.status_label = ttk.Label(self.conn_frame, text="Status: Disconnected", foreground="red")
-        self.status_label.grid(row=2, column=0, columnspan=2, pady=5)
-        
-        # Connect button
-        self.connect_btn = ttk.Button(self.conn_frame, text="Connect", command=self.connect)
-        self.connect_btn.grid(row=3, column=0, columnspan=2, pady=5)
-
-        #Disconnect button
-        self.disconnect_btn = ttk.Button(self.conn_frame, text="Disconnect", command=self.disconnect)
-        self.disconnect_btn.grid(row=4, column=0, columnspan=2, pady=5)
-
-        # Subscribe Frame
-        self.sub_frame = ttk.LabelFrame(root, text="Subscribe", padding="5")
-        self.sub_frame.grid(row=1, column=0, padx=5, pady=5, sticky="nsew")
-        
-        ttk.Label(self.sub_frame, text="Topic:").grid(row=0, column=0, padx=5, pady=5)
-        
-        # Combobox with existing topics
-        self.topic = ttk.Combobox(self.sub_frame, width=30)
-        self.topic['values'] = self.loadTopicsFromFile()
-        self.topic.set("#")
-
-        self.topic.grid(row=0, column=1, padx=5, pady=5)
-        
-        # Subscribe button
-        self.subscribe_btn = ttk.Button(self.sub_frame, text="Subscribe", command=self.subscribe)
-        self.subscribe_btn.grid(row=1, column=0, columnspan=2, pady=5)
-
-        # Unsubscribe button
-        self.unsubscribe_btn = ttk.Button(self.sub_frame, text="Unsubscribe", command=self.unsubscribe)
-        self.unsubscribe_btn.grid(row=1, column=2, columnspan=2, pady=5)
-
-        # Publish Frame
-        self.pub_frame = ttk.LabelFrame(root, text="Publish", padding="5")
-        self.pub_frame.grid(row=2, column=0, padx=5, pady=5, sticky="nsew")
-        
-        ttk.Label(self.pub_frame, text="Topic:").grid(row=0, column=0, padx=5, pady=5)
-        self.pub_topic = ttk.Combobox(self.pub_frame, width=30)
-        self.pub_topic['values'] = self.loadTopicsFromFile()
-        self.pub_topic.grid(row=0, column=1, padx=5, pady=5)
-        
-        ttk.Label(self.pub_frame, text="Message:").grid(row=1, column=0, padx=5, pady=5)
-        self.pub_message = ttk.Entry(self.pub_frame, width=30)
-        self.pub_message.grid(row=1, column=1, padx=5, pady=5)
-        
-        self.publish_btn = ttk.Button(self.pub_frame, text="Publish", command=self.publish)
-        self.publish_btn.grid(row=2, column=0, columnspan=2, pady=5)
-
-        # Messages Frame with Scrolled Text
-        self.msg_frame = ttk.LabelFrame(root, text="Messages", padding="5")
-        self.msg_frame.grid(row=3, column=0, padx=5, pady=5, sticky="nsew")
-        
-        # Button frame for message controls
-        self.msg_btn_frame = ttk.Frame(self.msg_frame)
-        self.msg_btn_frame.grid(row=1, column=0, padx=5, pady=5, sticky="ew")
-        
-        self.clear_msg_btn = ttk.Button(self.msg_btn_frame, text="Clear Messages", command=self.clearMessages)
-        self.clear_msg_btn.grid(row=0, column=0, padx=5, pady=5)
-        self.clear_db_btn = ttk.Button(self.msg_btn_frame, text="Clear Database", command=self.clear_database)
-        self.clear_db_btn.grid(row=0, column=1, padx=5, pady=5)
-        
-        self.show_db_btn = ttk.Button(self.msg_btn_frame, text="Show Database", command=self.show_database_window)
-        self.show_db_btn.grid(row=0, column=2, padx=5, pady=5)
-        
-        self.show_db_ui_btn = ttk.Button(self.msg_btn_frame, text="Show DB in UI", command=self.show_database_in_ui)
-        self.show_db_ui_btn.grid(row=0, column=3, padx=5, pady=5)
-
-        self.toggle_scroll_btn = ttk.Button(
-            self.msg_btn_frame,
-            text="Disable Autoscroll",
-            command=self.toggle_autoscroll
-        )
-        self.toggle_scroll_btn.grid(row=0, column=4, padx=5, pady=5)
-        
-        self.messages = scrolledtext.ScrolledText(self.msg_frame, height=10, width=100)
-        self.messages.grid(row=0, column=0, padx=5, pady=5, sticky="nsew")
-        
-        # MQTT Client
-        self.client = mqtt.Client()
-        self.client.on_connect = self.on_connect
-        self.client.on_message = self.on_message
-        self.client.on_disconnect = self.on_disconnect
-
-    def init_database(self):
+    def setup_database(self):
         """Initialize SQLite database"""
+        self.db_lock = threading.Lock()
         self.conn = sqlite3.connect('mqtt_messages.db', check_same_thread=False)
         c = self.conn.cursor()
         c.execute('''CREATE TABLE IF NOT EXISTS messages
-                    (timestamp TEXT, topic TEXT, message TEXT)''')
+                    (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                     timestamp TEXT, topic TEXT, message TEXT, qos INTEGER)''')
         self.conn.commit()
-
-    def save_message(self, timestamp, topic, message):
-        """Save message to database"""
-        with self.db_lock:
-            c = self.conn.cursor()
-            c.execute("INSERT INTO messages VALUES (?,?,?)", (timestamp, topic, message))
-            self.conn.commit()
-
+        
+    def setup_mqtt(self):
+        """Initialize MQTT client"""
+        self.client = None
+        self.is_connected = False
+        
+    def setup_bindings(self):
+        """Setup keyboard bindings"""
+        self.root.bind('<Control-Return>', lambda e: self.connect())
+        self.pub_message.bind('<Return>', lambda e: self.publish())
+        self.topic.bind('<Return>', lambda e: self.subscribe())
+        
+    def create_connection_frame(self):
+        """Create connection settings frame"""
+        frame = ttk.LabelFrame(self.root, text="🔗 Connection", padding="10")
+        frame.grid(row=0, column=0, padx=10, pady=5, sticky="ew")
+        frame.columnconfigure(1, weight=1)
+        
+        # Broker
+        ttk.Label(frame, text="Broker:").grid(row=0, column=0, sticky="w", padx=(0,10))
+        self.broker = ttk.Combobox(frame, width=25)
+        self.broker['values'] = self.load_from_file("brokers.json") or ["localhost", "test.mosquitto.org"]
+        self.broker.set("localhost")
+        self.broker.grid(row=0, column=1, sticky="ew", padx=(0,10))
+        
+        # Port
+        ttk.Label(frame, text="Port:").grid(row=0, column=2, sticky="w", padx=(10,5))
+        self.port = ttk.Combobox(frame, width=10)
+        self.port['values'] = self.load_from_file("ports.json") or ["1883", "8883", "8080"]
+        self.port.set("1883")
+        self.port.grid(row=0, column=3, sticky="w")
+        
+        # Auth frame
+        auth_frame = ttk.Frame(frame)
+        auth_frame.grid(row=1, column=0, columnspan=4, sticky="ew", pady=(10,0))
+        auth_frame.columnconfigure(1, weight=1)
+        auth_frame.columnconfigure(3, weight=1)
+        
+        ttk.Label(auth_frame, text="Username:").grid(row=0, column=0, sticky="w", padx=(0,5))
+        self.username = ttk.Entry(auth_frame, width=15)
+        self.username.grid(row=0, column=1, sticky="ew", padx=(0,20))
+        
+        ttk.Label(auth_frame, text="Password:").grid(row=0, column=2, sticky="w", padx=(0,5))
+        self.password = ttk.Entry(auth_frame, show="*", width=15)
+        self.password.grid(row=0, column=3, sticky="ew")
+        
+        # Status and controls
+        status_frame = ttk.Frame(frame)
+        status_frame.grid(row=2, column=0, columnspan=4, pady=(10,0))
+        
+        self.status_label = ttk.Label(status_frame, text="● Disconnected", foreground="red")
+        self.status_label.pack(side="left")
+        
+        btn_frame = ttk.Frame(status_frame)
+        btn_frame.pack(side="right")
+        
+        self.connect_btn = ttk.Button(btn_frame, text="Connect", command=self.connect)
+        self.connect_btn.pack(side="left", padx=(0,5))
+        
+        self.disconnect_btn = ttk.Button(btn_frame, text="Disconnect", command=self.disconnect, state="disabled")
+        self.disconnect_btn.pack(side="left")
+        
+    def create_subscribe_frame(self):
+        """Create subscription frame"""
+        frame = ttk.LabelFrame(self.root, text="📥 Subscribe", padding="10")
+        frame.grid(row=1, column=0, padx=10, pady=5, sticky="ew")
+        frame.columnconfigure(1, weight=1)
+        
+        ttk.Label(frame, text="Topic:").grid(row=0, column=0, sticky="w", padx=(0,10))
+        self.topic = ttk.Combobox(frame)
+        self.topic['values'] = self.load_from_file("topics.json") or ["#", "test/+", "home/+/temperature"]
+        self.topic.set("#")
+        self.topic.grid(row=0, column=1, sticky="ew", padx=(0,10))
+        
+        ttk.Label(frame, text="QoS:").grid(row=0, column=2, sticky="w", padx=(10,5))
+        self.sub_qos = ttk.Combobox(frame, values=["0", "1", "2"], width=5, state="readonly")
+        self.sub_qos.set("0")
+        self.sub_qos.grid(row=0, column=3, padx=(0,10))
+        
+        btn_frame = ttk.Frame(frame)
+        btn_frame.grid(row=0, column=4)
+        
+        self.subscribe_btn = ttk.Button(btn_frame, text="Subscribe", command=self.subscribe, state="disabled")
+        self.subscribe_btn.pack(side="left", padx=(0,5))
+        
+        self.unsubscribe_btn = ttk.Button(btn_frame, text="Unsubscribe", command=self.unsubscribe, state="disabled")
+        self.unsubscribe_btn.pack(side="left")
+        
+    def create_publish_frame(self):
+        """Create publish frame"""
+        frame = ttk.LabelFrame(self.root, text="📤 Publish", padding="10")
+        frame.grid(row=2, column=0, padx=10, pady=5, sticky="ew")
+        frame.columnconfigure(1, weight=1)
+        
+        # Topic row
+        ttk.Label(frame, text="Topic:").grid(row=0, column=0, sticky="w", padx=(0,10))
+        self.pub_topic = ttk.Combobox(frame)
+        self.pub_topic['values'] = self.load_from_file("topics.json") or []
+        self.pub_topic.grid(row=0, column=1, sticky="ew", padx=(0,10))
+        
+        ttk.Label(frame, text="QoS:").grid(row=0, column=2, sticky="w", padx=(10,5))
+        self.pub_qos = ttk.Combobox(frame, values=["0", "1", "2"], width=5, state="readonly")
+        self.pub_qos.set("0")
+        self.pub_qos.grid(row=0, column=3, padx=(0,10))
+        
+        # Retain checkbox
+        self.retain_var = tk.BooleanVar()
+        self.retain_cb = ttk.Checkbutton(frame, text="Retain", variable=self.retain_var)
+        self.retain_cb.grid(row=0, column=4)
+        
+        # Message row
+        ttk.Label(frame, text="Message:").grid(row=1, column=0, sticky="w", padx=(0,10), pady=(10,0))
+        self.pub_message = ttk.Entry(frame)
+        self.pub_message.grid(row=1, column=1, sticky="ew", padx=(0,10), pady=(10,0))
+        
+        self.publish_btn = ttk.Button(frame, text="Publish", command=self.publish, state="disabled")
+        self.publish_btn.grid(row=1, column=2, columnspan=3, pady=(10,0))
+        
+    def create_controls_frame(self):
+        """Create control buttons frame"""
+        frame = ttk.Frame(self.root)
+        frame.grid(row=3, column=0, padx=10, pady=5, sticky="ew")
+        
+        ttk.Button(frame, text="Clear Messages", command=self.clear_messages).pack(side="left", padx=(0,5))
+        ttk.Button(frame, text="Export Messages", command=self.export_messages).pack(side="left", padx=(0,5))
+        ttk.Button(frame, text="Database View", command=self.show_database_window).pack(side="left", padx=(0,5))
+        ttk.Button(frame, text="Clear Database", command=self.clear_database).pack(side="left", padx=(0,20))
+        
+        self.toggle_scroll_btn = ttk.Button(frame, text="Disable Autoscroll", command=self.toggle_autoscroll)
+        self.toggle_scroll_btn.pack(side="right")
+        
+        ttk.Label(frame, text="Filter:").pack(side="right", padx=(0,5))
+        self.filter_entry = ttk.Entry(frame, width=20)
+        self.filter_entry.pack(side="right", padx=(0,10))
+        self.filter_entry.bind('<KeyRelease>', self.filter_messages)
+        
+    def create_messages_frame(self):
+        """Create messages display frame"""
+        frame = ttk.LabelFrame(self.root, text="📋 Messages", padding="5")
+        frame.grid(row=4, column=0, padx=10, pady=(5,10), sticky="nsew")
+        frame.columnconfigure(0, weight=1)
+        frame.rowconfigure(0, weight=1)
+        
+        self.messages = scrolledtext.ScrolledText(
+            frame, height=15, wrap=tk.WORD,
+            font=("Consolas", 9), bg="#f8f9fa"
+        )
+        self.messages.grid(row=0, column=0, sticky="nsew")
+        
+        # Configure text tags for colored output
+        self.messages.tag_config("info", foreground="blue")
+        self.messages.tag_config("error", foreground="red")
+        self.messages.tag_config("success", foreground="green")
+        self.messages.tag_config("topic", foreground="purple", font=("Consolas", 9, "bold"))
+        
     def connect(self):
+        """Connect to MQTT broker"""
         try:
-            broker = self.broker.get()
+            broker = self.broker.get().strip()
             port = int(self.port.get())
-            # Store port
-            self.storePortToFile(str(port)) 
-            self.refreshPortCombobox()
-
-            # Store broker in file
-            self.storeBrokerToFile(broker)
+            username = self.username.get().strip() or None
+            password = self.password.get().strip() or None
             
-            # Disconnect existing client if any
-            if hasattr(self, 'client'):
+            if not broker:
+                self.log_message("❌ Broker address required", "error")
+                return
+                
+            # Save connection details
+            self.save_to_file("brokers.json", broker)
+            self.save_to_file("ports.json", str(port))
+            self.refresh_comboboxes()
+            
+            # Disconnect existing client
+            if self.client:
                 self.client.loop_stop()
                 self.client.disconnect()
-            
-            # Create new client instance with clean session
-            client_id = f'python-mqtt-{datetime.now().strftime("%H%M%S")}'
+                
+            # Create new client
+            client_id = f'mqtt-explorer-{datetime.now().strftime("%H%M%S")}'
             self.client = mqtt.Client(client_id=client_id, clean_session=True)
             
+            # Set authentication
+            if username:
+                self.client.username_pw_set(username, password)
+                
             # Set callbacks
             self.client.on_connect = self.on_connect
             self.client.on_message = self.on_message
             self.client.on_disconnect = self.on_disconnect
+            self.client.on_log = self.on_log
             
-            # Try SSL for secure connection if using port 8883
+            # SSL for port 8883
             if port == 8883:
-                self.client.tls_set(cert_reqs=ssl.CERT_NONE)  # Don't verify certificate
-                self.client.tls_insecure_set(True)  # Don't verify hostname
+                self.client.tls_set(cert_reqs=ssl.CERT_NONE)
+                self.client.tls_insecure_set(True)
                 
-            # Increase timeouts for more stability
-            self.client._connect_timeout = 30
-            self.client._keepalive = 60
+            self.status_label.config(text="● Connecting...", foreground="orange")
+            self.log_message(f"🔄 Connecting to {broker}:{port}...", "info")
             
-            # Update status before connecting
-            self.status_label.config(text="Status: Connecting...", foreground="orange")
-            self.log_message(f"Connecting to {broker}:{port}...")
-            
-            # Try to connect
-            self.client.connect(broker, port)
+            self.client.connect(broker, port, 60)
             self.client.loop_start()
-                
+            
+        except ValueError:
+            self.log_message("❌ Invalid port number", "error")
         except Exception as e:
-            self.log_message(f"Connection failed: {str(e)}")
-            self.status_label.config(text="Status: Error", foreground="red")
-
+            self.log_message(f"❌ Connection failed: {str(e)}", "error")
+            self.status_label.config(text="● Error", foreground="red")
+            
     def disconnect(self):
-        """Disconnect from the broker"""
-        if self.client.is_connected():
+        """Disconnect from broker"""
+        if self.client and self.is_connected:
             self.client.disconnect()
-            self.status_label.config(text="Status: Disconnected", foreground="red")
-            self.log_message("Disconnected from broker")
         else:
-            self.log_message("Error: Not connected to broker")
-    
+            self.log_message("❌ Not connected", "error")
+            
     def subscribe(self):
-        topic = self.topic.get()
-        #TODO self.client.unsubscribe(topic)  # Ensure we are not subscribed before subscribing
-        # Store used topic to file
-        self.storeTopicToFile(topic)
-
-        if not self.client.is_connected():
-            self.log_message("Error: Not connected to broker")
+        """Subscribe to topic"""
+        if not self.is_connected:
+            self.log_message("❌ Not connected to broker", "error")
             return
-
-        topic = self.topic.get()
-        self.client.subscribe(topic)
-        self.log_message(f"Subscribed to {topic}")
-
-    def unsubscribe(self):
-        if not self.client.is_connected():
-            self.log_message("Error: Not connected to broker")
-            return
-        topic = self.topic.get()
-        if topic == "#":
-            self.disconnect()
-            self.log_message(f"Error: Cannot unsubscribe from {topic} topics")
-            return
-        self.client.unsubscribe(topic)
-        self.log_message(f"Unsubscribed from {topic}")
-
-    def publish(self):
-        if not self.client.is_connected():
-            self.log_message("Error: Not connected to broker")
-            return
-        topic = self.pub_topic.get()
-        message = self.pub_message.get()
-        self.client.publish(topic, message)
-        self.log_message(f"Published to {topic}: {message}")
+            
+        topic = self.topic.get().strip()
+        qos = int(self.sub_qos.get())
         
-    def log_message(self, message):
-        """Log message to UI"""
-        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        self.messages.insert('end', f"[{current_time}] {message}\n")
-        if self.autoscroll_enabled:
-            self.messages.see('end')
-
-    def on_connect(self, _client, _userdata, _flags, rc):
+        if not topic:
+            self.log_message("❌ Topic required", "error")
+            return
+            
+        self.save_to_file("topics.json", topic)
+        self.refresh_comboboxes()
+        
+        self.client.subscribe(topic, qos)
+        self.log_message(f"📥 Subscribed to {topic} (QoS {qos})", "success")
+        
+    def unsubscribe(self):
+        """Unsubscribe from topic"""
+        if not self.is_connected:
+            self.log_message("❌ Not connected to broker", "error")
+            return
+            
+        topic = self.topic.get().strip()
+        if not topic or topic == "#":
+            self.log_message("❌ Cannot unsubscribe from wildcard", "error")
+            return
+            
+        self.client.unsubscribe(topic)
+        self.log_message(f"📤 Unsubscribed from {topic}", "info")
+        
+    def publish(self):
+        """Publish message"""
+        if not self.is_connected:
+            self.log_message("❌ Not connected to broker", "error")
+            return
+            
+        topic = self.pub_topic.get().strip()
+        message = self.pub_message.get()
+        qos = int(self.pub_qos.get())
+        retain = self.retain_var.get()
+        
+        if not topic:
+            self.log_message("❌ Topic required", "error")
+            return
+            
+        self.save_to_file("topics.json", topic)
+        self.refresh_comboboxes()
+        
+        self.client.publish(topic, message, qos, retain)
+        self.log_message(f"📤 Published to {topic}: {message} (QoS {qos}, Retain: {retain})", "success")
+        self.pub_message.delete(0, tk.END)
+        
+    def on_connect(self, client, userdata, flags, rc):
+        """Handle connection event"""
         if rc == 0:
-            self.log_message("Connected successfully")
-            self.status_label.config(text="Status: Connected", foreground="green")
+            self.is_connected = True
+            self.status_label.config(text="● Connected", foreground="green")
+            self.log_message("✅ Connected successfully", "success")
+            self.update_button_states()
         else:
-            error_messages = {
-                1: "Connection refused - incorrect protocol version",
-                2: "Connection refused - invalid client identifier",
-                3: "Connection refused - server unavailable",
-                4: "Connection refused - bad username or password",
-                5: "Connection refused - not authorized"
+            error_msgs = {
+                1: "Incorrect protocol version",
+                2: "Invalid client identifier", 
+                3: "Server unavailable",
+                4: "Bad username or password",
+                5: "Not authorized"
             }
-            error = error_messages.get(rc, f"Connection failed with code {rc}")
-            self.log_message(error)
-            self.status_label.config(text=f"Status: Error ({rc})", foreground="red")
-
-    def on_disconnect(self, _client, _userdata, rc):
-        disconnect_reasons = {
-            0: "Clean disconnect",
-            1: "Connection refused - incorrect protocol version",
-            2: "Connection refused - invalid client identifier",
-            3: "Connection refused - server unavailable",
-            4: "Connection refused - bad username or password",
-            5: "Connection refused - not authorized",
-            6: "Connection lost",
-            7: "Connection timed out or network error"
-        }
-        reason = disconnect_reasons.get(rc, f"Unknown error (code={rc})")
-        self.log_message(f"Disconnected: {reason}")
-        self.status_label.config(text="Status: Disconnected", foreground="red")
-
-    def on_message(self, _client, _userdata, msg):
-        """Handle received messages"""
-        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            error = error_msgs.get(rc, f"Unknown error ({rc})")
+            self.log_message(f"❌ Connection refused: {error}", "error")
+            self.status_label.config(text="● Error", foreground="red")
+            
+    def on_disconnect(self, client, userdata, rc):
+        """Handle disconnection event"""
+        self.is_connected = False
+        self.status_label.config(text="● Disconnected", foreground="red")
+        self.update_button_states()
+        
+        reason = "Clean disconnect" if rc == 0 else f"Unexpected disconnect ({rc})"
+        self.log_message(f"🔌 Disconnected: {reason}", "info")
+        
+    def on_message(self, client, userdata, msg):
+        """Handle received message"""
+        timestamp = datetime.now().strftime("%H:%M:%S")
         try:
-            # Attempt to decode the payload as UTF-8
             message = msg.payload.decode('utf-8')
         except UnicodeDecodeError:
-            # Handle non-UTF-8 payloads
-            message = f"<Binary Data: {msg.payload.hex()}>"
-
+            message = f"<Binary: {msg.payload.hex()[:50]}...>"
+            
         # Save to database
-        self.save_message(current_time, msg.topic, message)
-
+        self.save_message(timestamp, msg.topic, message, msg.qos)
+        
         # Display in UI
-        self.log_message(f"{msg.topic}: {message}")
-
+        self.messages.insert('end', f"[{timestamp}] ", "info")
+        self.messages.insert('end', f"{msg.topic}", "topic")
+        self.messages.insert('end', f": {message}\n")
+        
+        if self.autoscroll_enabled:
+            self.messages.see('end')
+            
+    def on_log(self, client, userdata, level, buf):
+        """Handle MQTT client logs"""
+        if level <= mqtt.MQTT_LOG_WARNING:
+            self.log_message(f"🔧 {buf}", "info")
+            
+    def log_message(self, message, tag=""):
+        """Log message to UI with optional formatting"""
+        timestamp = datetime.now().strftime("%H:%M:%S")
+        self.messages.insert('end', f"[{timestamp}] {message}\n", tag)
+        if self.autoscroll_enabled:
+            self.messages.see('end')
+            
+    def save_message(self, timestamp, topic, message, qos=0):
+        """Save message to database"""
+        with self.db_lock:
+            c = self.conn.cursor()
+            c.execute("INSERT INTO messages (timestamp, topic, message, qos) VALUES (?,?,?,?)",
+                     (timestamp, topic, message, qos))
+            self.conn.commit()
+            
+    def update_button_states(self):
+        """Update button states based on connection"""
+        state = "normal" if self.is_connected else "disabled"
+        alt_state = "disabled" if self.is_connected else "normal"
+        
+        self.subscribe_btn.config(state=state)
+        self.unsubscribe_btn.config(state=state)
+        self.publish_btn.config(state=state)
+        self.connect_btn.config(state=alt_state)
+        self.disconnect_btn.config(state=state)
+        
+    def save_to_file(self, filename, value):
+        """Save value to JSON file"""
+        filepath = f"./Storage/{filename}"
+        try:
+            data = self.load_from_file(filename) or []
+            if value not in data:
+                data.append(value)
+                with open(filepath, 'w') as f:
+                    json.dump(data, f, indent=2)
+        except Exception as e:
+            self.log_message(f"❌ Failed to save {filename}: {e}", "error")
+            
+    def load_from_file(self, filename):
+        """Load data from JSON file"""
+        filepath = f"./Storage/{filename}"
+        try:
+            if os.path.exists(filepath):
+                with open(filepath, 'r') as f:
+                    return json.load(f)
+        except Exception:
+            pass
+        return []
+        
+    def refresh_comboboxes(self):
+        """Refresh all combobox values"""
+        self.broker['values'] = self.load_from_file("brokers.json")
+        self.port['values'] = self.load_from_file("ports.json")
+        topics = self.load_from_file("topics.json")
+        self.topic['values'] = topics
+        self.pub_topic['values'] = topics
+        
+    def clear_messages(self):
+        """Clear message display"""
+        self.messages.delete('1.0', tk.END)
+        self.log_message("🗑️ Messages cleared", "info")
+        
+    def clear_database(self):
+        """Clear message database"""
+        if messagebox.askyesno("Confirm", "Clear all stored messages?"):
+            with self.db_lock:
+                c = self.conn.cursor()
+                c.execute("DELETE FROM messages")
+                self.conn.commit()
+            self.log_message("🗑️ Database cleared", "info")
+            
+    def export_messages(self):
+        """Export messages to file"""
+        filename = filedialog.asksaveasfilename(
+            defaultextension=".json",
+            filetypes=[("JSON files", "*.json"), ("Text files", "*.txt")],
+            title="Export Messages"
+        )
+        if filename:
+            try:
+                with self.db_lock:
+                    c = self.conn.cursor()
+                    c.execute("SELECT timestamp, topic, message, qos FROM messages ORDER BY id")
+                    rows = c.fetchall()
+                    
+                data = [{"timestamp": r[0], "topic": r[1], "message": r[2], "qos": r[3]} for r in rows]
+                
+                with open(filename, 'w') as f:
+                    json.dump(data, f, indent=2)
+                    
+                self.log_message(f"💾 Exported {len(data)} messages to {os.path.basename(filename)}", "success")
+            except Exception as e:
+                self.log_message(f"❌ Export failed: {e}", "error")
+                
+    def show_database_window(self):
+        """Show database viewer window"""
+        db_window = tk.Toplevel(self.root)
+        db_window.title("Message Database")
+        db_window.geometry("900x600")
+        
+        # Configure grid
+        db_window.columnconfigure(0, weight=1)
+        db_window.rowconfigure(1, weight=1)
+        
+        # Controls
+        ctrl_frame = ttk.Frame(db_window)
+        ctrl_frame.grid(row=0, column=0, padx=10, pady=5, sticky="ew")
+        
+        ttk.Button(ctrl_frame, text="Refresh", command=lambda: self.refresh_db_view(tree, count_lbl)).pack(side="left", padx=(0,5))
+        ttk.Button(ctrl_frame, text="Export", command=self.export_messages).pack(side="left", padx=(0,20))
+        
+        count_lbl = ttk.Label(ctrl_frame, text="")
+        count_lbl.pack(side="left")
+        
+        # Search
+        ttk.Label(ctrl_frame, text="Search:").pack(side="right", padx=(20,5))
+        search_var = tk.StringVar()
+        search_entry = ttk.Entry(ctrl_frame, textvariable=search_var, width=20)
+        search_entry.pack(side="right")
+        search_var.trace('w', lambda *args: self.search_db(tree, search_var.get()))
+        
+        # Treeview
+        tree = ttk.Treeview(db_window, columns=("Time", "Topic", "Message", "QoS"), show='headings')
+        tree.grid(row=1, column=0, padx=10, pady=5, sticky="nsew")
+        
+        # Configure columns
+        tree.heading("Time", text="Timestamp")
+        tree.heading("Topic", text="Topic")
+        tree.heading("Message", text="Message") 
+        tree.heading("QoS", text="QoS")
+        
+        tree.column("Time", width=80)
+        tree.column("Topic", width=200)
+        tree.column("Message", width=400)
+        tree.column("QoS", width=50)
+        
+        # Scrollbars
+        v_scroll = ttk.Scrollbar(db_window, orient="vertical", command=tree.yview)
+        v_scroll.grid(row=1, column=1, sticky='ns')
+        tree.configure(yscroll=v_scroll.set)
+        
+        # Load data
+        self.refresh_db_view(tree, count_lbl)
+        
+    def refresh_db_view(self, tree, count_label):
+        """Refresh database view"""
+        for item in tree.get_children():
+            tree.delete(item)
+            
+        with self.db_lock:
+            c = self.conn.cursor()
+            c.execute("SELECT timestamp, topic, message, qos FROM messages ORDER BY id DESC LIMIT 1000")
+            rows = c.fetchall()
+            
+        for row in rows:
+            tree.insert("", "end", values=row)
+            
+        count_label.config(text=f"Messages: {len(rows)}")
+        
+    def search_db(self, tree, search_term):
+        """Search database entries"""
+        if not search_term:
+            self.refresh_db_view(tree, None)
+            return
+            
+        for item in tree.get_children():
+            tree.delete(item)
+            
+        with self.db_lock:
+            c = self.conn.cursor()
+            c.execute("""SELECT timestamp, topic, message, qos FROM messages 
+                        WHERE topic LIKE ? OR message LIKE ? 
+                        ORDER BY id DESC LIMIT 1000""", 
+                     (f'%{search_term}%', f'%{search_term}%'))
+            rows = c.fetchall()
+            
+        for row in rows:
+            tree.insert("", "end", values=row)
+            
+    def filter_messages(self, event=None):
+        """Filter displayed messages (placeholder)"""
+        # This would require storing messages and re-displaying filtered ones
+        pass
+        
+    def toggle_autoscroll(self):
+        """Toggle autoscroll feature"""
+        self.autoscroll_enabled = not self.autoscroll_enabled
+        text = "Disable Autoscroll" if self.autoscroll_enabled else "Enable Autoscroll"
+        self.toggle_scroll_btn.config(text=text)
+        self.log_message(f"📜 Autoscroll {'enabled' if self.autoscroll_enabled else 'disabled'}", "info")
+        
     def __del__(self):
         """Cleanup on exit"""
         if hasattr(self, 'conn'):
             self.conn.close()
-        if hasattr(self, 'client'):
+        if hasattr(self, 'client') and self.client:
             self.client.loop_stop()
             self.client.disconnect()
-    
-    def storeTopicToFile(self, topic, filename="topics.txt"):
-        if not topic:
-            self.log_message("No topic to store.")
-            return
-        try:
-            # Load existing topics from JSON file, or start a new list
-            if os.path.exists("./Storage/" + filename):
-                with open("./Storage/" + filename, "r") as file:
-                    try:
-                        topics = json.load(file)
-                    except json.JSONDecodeError:
-                        topics = []
-            else:
-                topics = []
-
-            # Add the topic if not already present
-            if topic not in topics:
-                topics.append(topic)
-                with open("./Storage/" + filename, "w") as file:
-                    json.dump(topics, file, indent=2)
-                self.log_message(f"Saved new topic '{topic}' to {filename}")
-                self.refreshTopicCombobox()
-                self.refreshPubTopicCombobox()
-            else:
-                self.log_message(f"Topic '{topic}' already saved")
-
-        except Exception as e:
-            self.log_message(f"Failed to save topic: {e}")
-
-    def loadTopicsFromFile(self, filename="topics.txt"):
-        if not os.path.exists("./Storage/" + filename):
-            return []
-
-        try:
-            with open("./Storage/" + filename, "r") as file:
-                topics = json.load(file)
-                if isinstance(topics, list):
-                    return topics
-                else:
-                    self.log_message("Invalid format in topics file.")
-                    return []
-        except (json.JSONDecodeError, Exception) as e:
-            self.log_message(f"Failed to load topics: {e}")
-            return []
-        
-    def refreshTopicCombobox(self):
-        topics = self.loadTopicsFromFile()
-        self.topic['values'] = topics
-
-    def refreshPubTopicCombobox(self):
-        topics = self.loadTopicsFromFile()
-        self.pub_topic['values'] = topics
-
-
-    def storeBrokerToFile(self, broker, filename="brokers.txt"):
-        if not broker:
-            self.log_message("No broker to store.")
-            return
-        try:
-            # Load existing brokers from file
-            if os.path.exists("./Storage/" + filename):
-                with open("./Storage/" + filename, "r") as file:
-                    try:
-                        brokers = json.load(file)
-                    except json.JSONDecodeError:
-                        brokers = []
-            else:
-                brokers = []
-
-            # Save new broker if not already in list
-            if broker not in brokers:
-                brokers.append(broker)
-                with open("./Storage/" + filename, "w") as file:
-                    json.dump(brokers, file, indent=2)
-                self.log_message(f"Saved new broker '{broker}' to {filename}")
-                self.refreshBrokerCombobox()
-            else:
-                self.log_message(f"Broker '{broker}' already saved")
-
-        except Exception as e:
-            self.log_message(f"Failed to save broker: {e}")
-
-    def loadBrokersFromFile(self, filename="brokers.txt"):
-        if not os.path.exists("./Storage/" + filename):
-            return []
-        try:
-            with open("./Storage/" + filename, "r") as file:
-                brokers = json.load(file)
-                return brokers if isinstance(brokers, list) else []
-        except Exception:
-            return []
-        
-    def refreshBrokerCombobox(self):
-        brokers = self.loadBrokersFromFile()
-        self.broker['values'] = brokers
-
-    def storePortToFile(self, port, filename="ports.txt"):
-        if not port:
-            self.log_message("No port to store.")
-            return
-        try:
-            if os.path.exists("./Storage/" + filename):
-                with open("./Storage/" + filename, "r") as file:
-                    try:
-                        ports = json.load(file)
-                    except json.JSONDecodeError:
-                        ports = []
-            else:
-                ports = []
-
-            if port not in ports:
-                ports.append(port)
-                with open("./Storage/" + filename, "w") as file:
-                    json.dump(ports, file, indent=2)
-                self.log_message(f"Saved new port '{port}' to {filename}")
-            else:
-                self.log_message(f"Port '{port}' already saved")
-        except Exception as e:
-            self.log_message(f"Failed to save port: {e}")
-    
-    def loadPortsFromFile(self, filename="ports.txt"):
-        if not os.path.exists("./Storage/" + filename):
-            return []
-        try:
-            with open("./Storage/" + filename, "r") as file:
-                ports = json.load(file)
-                return ports if isinstance(ports, list) else []
-        except Exception:
-            return []
-        
-    def refreshPortCombobox(self):
-        ports = self.loadPortsFromFile()
-        self.port['values'] = ports
-
-    def clearMessages(self):
-        self.messages.delete('1.0', tk.END)
-
-    def clear_database(self):
-        """Clear the messages database"""
-        with self.db_lock:
-            c = self.conn.cursor()
-            c.execute("DELETE FROM messages")
-            self.conn.commit()
-            self.log_message("Database cleared")
-
-    def show_database_window(self):
-        """Show the database contents in a new window"""
-        db_window = tk.Toplevel(self.root)
-        db_window.title("Database Contents")
-        db_window.geometry("800x600")
-        
-        # Configure grid weights for resizing
-        db_window.columnconfigure(0, weight=1)
-        db_window.rowconfigure(0, weight=1)
-        
-        # Create frame for controls
-        control_frame = ttk.Frame(db_window)
-        control_frame.grid(row=1, column=0, columnspan=2, padx=5, pady=5, sticky="ew")
-        
-        # Add refresh button
-        refresh_btn = ttk.Button(control_frame, text="Refresh", command=lambda: self.refresh_database_view(tree, count_label))
-        refresh_btn.grid(row=0, column=0, padx=5, pady=5)
-        
-        # Add export button
-        export_btn = ttk.Button(control_frame, text="Export to File", command=lambda: self.export_database())
-        export_btn.grid(row=0, column=1, padx=5, pady=5)
-        
-        # Add count label
-        count_label = ttk.Label(control_frame, text="")
-        count_label.grid(row=0, column=2, padx=20, pady=5)
-        
-        tree = ttk.Treeview(db_window, columns=("Timestamp", "Topic", "Message"), show='headings')
-        tree.heading("Timestamp", text="Timestamp")
-        tree.heading("Topic", text="Topic")
-        tree.heading("Message", text="Message")
-        
-        # Configure column widths
-        tree.column("Timestamp", width=100)
-        tree.column("Topic", width=200)
-        tree.column("Message", width=400)
-        
-        tree.grid(row=0, column=0, padx=5, pady=5, sticky="nsew")
-        
-        # Add scrollbars
-        v_scrollbar = ttk.Scrollbar(db_window, orient="vertical", command=tree.yview)
-        v_scrollbar.grid(row=0, column=1, sticky='ns')
-        tree.configure(yscroll=v_scrollbar.set)
-        
-        h_scrollbar = ttk.Scrollbar(db_window, orient="horizontal", command=tree.xview)
-        h_scrollbar.grid(row=2, column=0, sticky='ew')
-        tree.configure(xscroll=h_scrollbar.set)
-
-        # Load initial data
-        self.refresh_database_view(tree, count_label)
-
-    def refresh_database_view(self, tree, count_label=None):
-        """Refresh the database view with current data"""
-        # Clear existing items
-        for item in tree.get_children():
-            tree.delete(item)
-            
-        # Insert data into the treeview
-        with self.db_lock:
-            c = self.conn.cursor()
-            c.execute("SELECT * FROM messages ORDER BY timestamp DESC")
-            rows = c.fetchall()
-            for row in rows:
-                tree.insert("", "end", values=row)
-                
-        # Update count if label provided
-        if count_label:
-            count_label.config(text=f"Total messages: {len(rows)}")
-
-    def export_database(self):
-        """Export database contents to a JSON file"""
-        try:
-            with self.db_lock:
-                c = self.conn.cursor()
-                c.execute("SELECT * FROM messages")
-                rows = c.fetchall()
-                
-            # Create export data
-            export_data = []
-            for row in rows:
-                export_data.append({
-                    "timestamp": row[0],
-                    "topic": row[1],
-                    "message": row[2]
-                })
-            
-            # Save to file
-            filename = f"mqtt_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
-            filepath = os.path.join("./Storage/", filename)
-            
-            with open(filepath, 'w') as f:
-                json.dump(export_data, f, indent=2)
-                
-            self.log_message(f"Database exported to {filename}")
-            
-        except Exception as e:
-            self.log_message(f"Failed to export database: {e}")
-
-    def show_database_in_ui(self):
-        """Show recent database entries in the main UI"""
-        try:
-            with self.db_lock:
-                c = self.conn.cursor()
-                c.execute("SELECT * FROM messages ORDER BY timestamp DESC LIMIT 10")
-                rows = c.fetchall()
-                
-            self.log_message("--- Recent Database Entries ---")
-            for row in rows:
-                timestamp, topic, message = row
-                self.log_message(f"[{timestamp}] {topic}: {message}")
-            self.log_message("--- End Database Entries ---")
-            
-        except Exception as e:
-            self.log_message(f"Failed to show database: {e}")
-
-    def toggle_autoscroll(self):
-        self.autoscroll_enabled = not self.autoscroll_enabled
-        new_label = "Disable Autoscroll" if self.autoscroll_enabled else "Enable Autoscroll"
-        self.toggle_scroll_btn.config(text=new_label)
-        self.log_message(f"Autoscroll {'enabled' if self.autoscroll_enabled else 'disabled'}")
-
-#TODO Add auto scaling of HUD to window size
-#TODO Prettefy the whole interface
-#TODO add possibility to press enter in text fields to substitute button press
 
 if __name__ == "__main__":
     root = tk.Tk()
