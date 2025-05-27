@@ -406,8 +406,6 @@ class MQTTExplorer:
         self.messages.delete('1.0', tk.END)
 
 #TODO Add auto scaling of HUD to window size
-#TODO add a disconnect button
-#TODO Add a unsubscribe button
 #TODO Add a button to disable autoscroll
 #TODO Add a button to enable autoscroll maybe same button as above
 #TODO Prettefy the whole interface
