@@ -82,7 +82,8 @@ class MQTTExplorer:
         self.pub_frame.grid(row=2, column=0, padx=5, pady=5, sticky="nsew")
         
         ttk.Label(self.pub_frame, text="Topic:").grid(row=0, column=0, padx=5, pady=5)
-        self.pub_topic = ttk.Entry(self.pub_frame, width=30)
+        self.pub_topic = ttk.Combobox(self.pub_frame, width=30)
+        self.pub_topic['values'] = self.loadTopicsFromFile()
         self.pub_topic.grid(row=0, column=1, padx=5, pady=5)
         
         ttk.Label(self.pub_frame, text="Message:").grid(row=1, column=0, padx=5, pady=5)
