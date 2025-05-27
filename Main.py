@@ -184,6 +184,8 @@ class MQTTExplorer:
             self.log_message("Error: Not connected to broker")
             return
 
+        #TODO self.client.unsubscribe(topic)  # Ensure we are not subscribed before subscribing
+        topic = self.topic.get()
         self.client.subscribe(topic)
         self.log_message(f"Subscribed to {topic}")
 
@@ -218,9 +220,6 @@ class MQTTExplorer:
         if rc == 0:
             self.log_message("Connected successfully")
             self.status_label.config(text="Status: Connected", foreground="green")
-            # Auto-subscribe to test topic
-            self.client.subscribe("test/#")
-            self.log_message("Auto-subscribed to test/#")
         else:
             error_messages = {
                 1: "Connection refused - incorrect protocol version",
