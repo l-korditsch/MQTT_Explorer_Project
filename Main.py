@@ -565,8 +565,6 @@ class MQTTExplorer:
 
 #TODO Add auto scaling of HUD to window size
 #TODO Prettefy the whole interface
-#TODO timestamp in database prettefiy
-#TODO add date tot timestamp on db
 #TODO add possibility to press enter in text fields to substitute button press
 
 if __name__ == "__main__":
