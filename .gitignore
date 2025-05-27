@@ -178,4 +178,4 @@ cython_debug/
 *.sqlite3
 
 # Files in the storage folder
-.Storage/
+Storage/
