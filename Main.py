@@ -228,7 +228,7 @@ class MQTTExplorer:
         
     def log_message(self, message):
         """Log message to UI"""
-        current_time = datetime.now().strftime("%H:%M:%S")
+        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         self.messages.insert('end', f"[{current_time}] {message}\n")
         self.messages.see('end')
 
@@ -265,7 +265,7 @@ class MQTTExplorer:
 
     def on_message(self, _client, _userdata, msg):
         """Handle received messages"""
-        current_time = datetime.now().strftime("%H%M%S")
+        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         try:
             # Attempt to decode the payload as UTF-8
             message = msg.payload.decode('utf-8')
