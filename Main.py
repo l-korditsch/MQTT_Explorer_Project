@@ -95,6 +95,8 @@ class MQTTExplorer:
 
         # Messages Frame with Scrolled Text
         self.msg_frame = ttk.LabelFrame(root, text="Messages", padding="5")
+        self.clear_msg_btn = ttk.Button(self.msg_frame, text="Clear Messages", command=self.clearMessages)
+        self.clear_msg_btn.grid(row=1, column=0, padx=5, pady=5, sticky="nsew")
         self.msg_frame.grid(row=3, column=0, padx=5, pady=5, sticky="nsew")
         
         self.messages = scrolledtext.ScrolledText(self.msg_frame, height=10, width=100)
@@ -400,6 +402,9 @@ class MQTTExplorer:
         ports = self.loadPortsFromFile()
         self.port['values'] = ports
 
+    def clearMessages(self):
+        self.messages.delete('1.0', tk.END)
+
 
 
 
@@ -418,7 +423,6 @@ class MQTTExplorer:
 #TODO Add a button to disable autoscroll
 #TODO Add a button to enable autoscroll maybe same button as above
 #TODO Prettefy the whole interface
-#TODO Add a function to clear the messages
 #TODO Add a function to clear the database
 #TODO Add a function to show the database
 #TODO Add a function to show the database in the UI
