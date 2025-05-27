@@ -193,6 +193,7 @@ class MQTTExplorer:
     
     def subscribe(self):
         topic = self.topic.get()
+        #TODO self.client.unsubscribe(topic)  # Ensure we are not subscribed before subscribing
         # Store used topic to file
         self.storeTopicToFile(topic)
 
@@ -200,7 +201,6 @@ class MQTTExplorer:
             self.log_message("Error: Not connected to broker")
             return
 
-        #TODO self.client.unsubscribe(topic)  # Ensure we are not subscribed before subscribing
         topic = self.topic.get()
         self.client.subscribe(topic)
         self.log_message(f"Subscribed to {topic}")
@@ -546,6 +546,7 @@ class MQTTExplorer:
 #TODO Prettefy the whole interface
 #TODO timestamp in database prettefiy
 #TODO add date tot timestamp on db
+#TODO add possibility to press enter in text fields to substitute button press
 
 if __name__ == "__main__":
     root = tk.Tk()
