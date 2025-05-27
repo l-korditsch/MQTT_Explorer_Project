@@ -95,9 +95,22 @@ class MQTTExplorer:
 
         # Messages Frame with Scrolled Text
         self.msg_frame = ttk.LabelFrame(root, text="Messages", padding="5")
-        self.clear_msg_btn = ttk.Button(self.msg_frame, text="Clear Messages", command=self.clearMessages)
-        self.clear_msg_btn.grid(row=1, column=0, padx=5, pady=5, sticky="nsew")
         self.msg_frame.grid(row=3, column=0, padx=5, pady=5, sticky="nsew")
+        
+        # Button frame for message controls
+        self.msg_btn_frame = ttk.Frame(self.msg_frame)
+        self.msg_btn_frame.grid(row=1, column=0, padx=5, pady=5, sticky="ew")
+        
+        self.clear_msg_btn = ttk.Button(self.msg_btn_frame, text="Clear Messages", command=self.clearMessages)
+        self.clear_msg_btn.grid(row=0, column=0, padx=5, pady=5)
+        self.clear_db_btn = ttk.Button(self.msg_btn_frame, text="Clear Database", command=self.clear_database)
+        self.clear_db_btn.grid(row=0, column=1, padx=5, pady=5)
+        
+        self.show_db_btn = ttk.Button(self.msg_btn_frame, text="Show Database", command=self.show_database_window)
+        self.show_db_btn.grid(row=0, column=2, padx=5, pady=5)
+        
+        self.show_db_ui_btn = ttk.Button(self.msg_btn_frame, text="Show DB in UI", command=self.show_database_in_ui)
+        self.show_db_ui_btn.grid(row=0, column=3, padx=5, pady=5)
         
         self.messages = scrolledtext.ScrolledText(self.msg_frame, height=10, width=100)
         self.messages.grid(row=0, column=0, padx=5, pady=5, sticky="nsew")
@@ -405,17 +418,127 @@ class MQTTExplorer:
     def clearMessages(self):
         self.messages.delete('1.0', tk.END)
 
+    def clear_database(self):
+        """Clear the messages database"""
+        with self.db_lock:
+            c = self.conn.cursor()
+            c.execute("DELETE FROM messages")
+            self.conn.commit()
+            self.log_message("Database cleared")
 
-
-
-
-
-
-
-
+    def show_database_window(self):
+        """Show the database contents in a new window"""
+        db_window = tk.Toplevel(self.root)
+        db_window.title("Database Contents")
+        db_window.geometry("800x600")
         
+        # Configure grid weights for resizing
+        db_window.columnconfigure(0, weight=1)
+        db_window.rowconfigure(0, weight=1)
         
+        # Create frame for controls
+        control_frame = ttk.Frame(db_window)
+        control_frame.grid(row=1, column=0, columnspan=2, padx=5, pady=5, sticky="ew")
+        
+        # Add refresh button
+        refresh_btn = ttk.Button(control_frame, text="Refresh", command=lambda: self.refresh_database_view(tree, count_label))
+        refresh_btn.grid(row=0, column=0, padx=5, pady=5)
+        
+        # Add export button
+        export_btn = ttk.Button(control_frame, text="Export to File", command=lambda: self.export_database())
+        export_btn.grid(row=0, column=1, padx=5, pady=5)
+        
+        # Add count label
+        count_label = ttk.Label(control_frame, text="")
+        count_label.grid(row=0, column=2, padx=20, pady=5)
+        
+        tree = ttk.Treeview(db_window, columns=("Timestamp", "Topic", "Message"), show='headings')
+        tree.heading("Timestamp", text="Timestamp")
+        tree.heading("Topic", text="Topic")
+        tree.heading("Message", text="Message")
+        
+        # Configure column widths
+        tree.column("Timestamp", width=100)
+        tree.column("Topic", width=200)
+        tree.column("Message", width=400)
+        
+        tree.grid(row=0, column=0, padx=5, pady=5, sticky="nsew")
+        
+        # Add scrollbars
+        v_scrollbar = ttk.Scrollbar(db_window, orient="vertical", command=tree.yview)
+        v_scrollbar.grid(row=0, column=1, sticky='ns')
+        tree.configure(yscroll=v_scrollbar.set)
+        
+        h_scrollbar = ttk.Scrollbar(db_window, orient="horizontal", command=tree.xview)
+        h_scrollbar.grid(row=2, column=0, sticky='ew')
+        tree.configure(xscroll=h_scrollbar.set)
 
+        # Load initial data
+        self.refresh_database_view(tree, count_label)
+
+    def refresh_database_view(self, tree, count_label=None):
+        """Refresh the database view with current data"""
+        # Clear existing items
+        for item in tree.get_children():
+            tree.delete(item)
+            
+        # Insert data into the treeview
+        with self.db_lock:
+            c = self.conn.cursor()
+            c.execute("SELECT * FROM messages ORDER BY timestamp DESC")
+            rows = c.fetchall()
+            for row in rows:
+                tree.insert("", "end", values=row)
+                
+        # Update count if label provided
+        if count_label:
+            count_label.config(text=f"Total messages: {len(rows)}")
+
+    def export_database(self):
+        """Export database contents to a JSON file"""
+        try:
+            with self.db_lock:
+                c = self.conn.cursor()
+                c.execute("SELECT * FROM messages")
+                rows = c.fetchall()
+                
+            # Create export data
+            export_data = []
+            for row in rows:
+                export_data.append({
+                    "timestamp": row[0],
+                    "topic": row[1],
+                    "message": row[2]
+                })
+            
+            # Save to file
+            filename = f"mqtt_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+            filepath = os.path.join("./Storage/", filename)
+            
+            with open(filepath, 'w') as f:
+                json.dump(export_data, f, indent=2)
+                
+            self.log_message(f"Database exported to {filename}")
+            
+        except Exception as e:
+            self.log_message(f"Failed to export database: {e}")
+
+    def show_database_in_ui(self):
+        """Show recent database entries in the main UI"""
+        try:
+            with self.db_lock:
+                c = self.conn.cursor()
+                c.execute("SELECT * FROM messages ORDER BY timestamp DESC LIMIT 10")
+                rows = c.fetchall()
+                
+            self.log_message("--- Recent Database Entries ---")
+            for row in rows:
+                timestamp, topic, message = row
+                self.log_message(f"[{timestamp}] {topic}: {message}")
+            self.log_message("--- End Database Entries ---")
+            
+        except Exception as e:
+            self.log_message(f"Failed to show database: {e}")
 
 #TODO Add auto scaling of HUD to window size
 #TODO Add a button to disable autoscroll
@@ -426,7 +549,6 @@ class MQTTExplorer:
 #TODO Add a function to show the database in the UI
 #TODO Add a function to show the database in a new window
 #TODO Add a function to show the database in a new window with a table
-
 
 if __name__ == "__main__":
     root = tk.Tk()
