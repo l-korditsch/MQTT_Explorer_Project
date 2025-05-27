@@ -10,6 +10,9 @@ import ssl
 
 class MQTTExplorer:
     def __init__(self, root):
+        # Autoscroll
+        self.autoscroll_enabled = True
+
         # Ensure storage folder exists
         os.makedirs("./Storage/", exist_ok=True)
 
@@ -111,6 +114,13 @@ class MQTTExplorer:
         
         self.show_db_ui_btn = ttk.Button(self.msg_btn_frame, text="Show DB in UI", command=self.show_database_in_ui)
         self.show_db_ui_btn.grid(row=0, column=3, padx=5, pady=5)
+
+        self.toggle_scroll_btn = ttk.Button(
+            self.msg_btn_frame,
+            text="Disable Autoscroll",
+            command=self.toggle_autoscroll
+        )
+        self.toggle_scroll_btn.grid(row=0, column=4, padx=5, pady=5)
         
         self.messages = scrolledtext.ScrolledText(self.msg_frame, height=10, width=100)
         self.messages.grid(row=0, column=0, padx=5, pady=5, sticky="nsew")
@@ -230,7 +240,8 @@ class MQTTExplorer:
         """Log message to UI"""
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         self.messages.insert('end', f"[{current_time}] {message}\n")
-        self.messages.see('end')
+        if self.autoscroll_enabled:
+            self.messages.see('end')
 
     def on_connect(self, _client, _userdata, _flags, rc):
         if rc == 0:
@@ -546,9 +557,13 @@ class MQTTExplorer:
         except Exception as e:
             self.log_message(f"Failed to show database: {e}")
 
+    def toggle_autoscroll(self):
+        self.autoscroll_enabled = not self.autoscroll_enabled
+        new_label = "Disable Autoscroll" if self.autoscroll_enabled else "Enable Autoscroll"
+        self.toggle_scroll_btn.config(text=new_label)
+        self.log_message(f"Autoscroll {'enabled' if self.autoscroll_enabled else 'disabled'}")
+
 #TODO Add auto scaling of HUD to window size
-#TODO Add a button to disable autoscroll
-#TODO Add a button to enable autoscroll maybe same button as above
 #TODO Prettefy the whole interface
 #TODO timestamp in database prettefiy
 #TODO add date tot timestamp on db
