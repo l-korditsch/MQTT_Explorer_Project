@@ -3,5 +3,6 @@
   "Was.com",
   "wdw",
   "localhost2",
-  "localhost"
+  "localhost",
+  "localhost:"
 ]
