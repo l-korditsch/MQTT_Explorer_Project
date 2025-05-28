@@ -566,6 +566,8 @@ class MQTTExplorer:
 #TODO Add auto scaling of HUD to window size
 #TODO Prettefy the whole interface
 #TODO add possibility to press enter in text fields to substitute button press
+#TODO diasble to autoscroll on scroll
+#TODO if at the bottom of console enable autoscroll
 
 if __name__ == "__main__":
     root = tk.Tk()
