@@ -23,6 +23,8 @@ class MQTTExplorer:
         self.root.columnconfigure(0, weight=1)
         self.root.rowconfigure(3, weight=1)
         
+        self.subscribed_switch = False
+        
         # Initialize database
         self.init_database()
         
@@ -203,7 +205,17 @@ class MQTTExplorer:
     
     def subscribe(self):
         topic = self.topic.get()
-        #TODO self.client.unsubscribe(topic)  # Ensure we are not subscribed before subscribing
+        # Only try to unsubscribe if there is a previous topic
+        try:
+            with open('Storage/topics.txt', 'r') as file:
+                topics = json.load(file)
+            if isinstance(topics, list) and len(topics) > 0 and self.subscribed_switch == True:
+                last_topic = topics[-1]
+                self.unsubscribe_topic(last_topic)
+        except (FileNotFoundError, json.JSONDecodeError):
+            # No topics file or empty file: skip unsubscribe
+            pass
+
         # Store used topic to file
         self.storeTopicToFile(topic)
 
@@ -211,15 +223,30 @@ class MQTTExplorer:
             self.log_message("Error: Not connected to broker")
             return
 
-        topic = self.topic.get()
         self.client.subscribe(topic)
         self.log_message(f"Subscribed to {topic}")
+        
+        if self.subscribed_switch == False:
+            self.subscribed_switch = True
 
     def unsubscribe(self):
         if not self.client.is_connected():
             self.log_message("Error: Not connected to broker")
             return
         topic = self.topic.get()
+        if topic == "#":
+            self.disconnect()
+            self.log_message(f"Error: Cannot unsubscribe from {topic} topics")
+            return
+        self.client.unsubscribe(topic)
+        self.log_message(f"Unsubscribed from {topic}")
+        
+    def unsubscribe_topic(self,topic):
+        if not self.client.is_connected():
+            self.log_message("Error: Not connected to broker")
+            return
+        
+        topic = topic
         if topic == "#":
             self.disconnect()
             self.log_message(f"Error: Cannot unsubscribe from {topic} topics")
