@@ -231,7 +231,7 @@ class MQTTFrontend:
         message = self.pub_message.get()
 
         if self.backend.publish(topic, message):
-            self._log_message(f"↗ Published to {topic}: {message}")
+            self._log_message(f"Published to {topic}: {message}")
 
     def _clear_messages(self):
         """Clear messages display"""
@@ -344,18 +344,15 @@ class MQTTFrontend:
                 if len(row) == 4:
                     # New format with direction
                     timestamp, topic, message, direction = row
-                    direction_indicator = "↗" if direction == "sent" else "↙"
                     self._log_message(
-                        f"[{timestamp}] {direction_indicator} {topic}: {message}",
+                        f"[{timestamp}] {direction } {topic}: {message}",
                         False,
                         True,
                     )
                 else:
                     # Old format without direction (backward compatibility)
                     timestamp, topic, message = row
-                    self._log_message(
-                        f"[{timestamp}] ↙ {topic}: {message}", False, True
-                    )
+                    self._log_message(f"[{timestamp}] {topic}: {message}", False, True)
             self._log_message("--- End Database Entries ---\n", False)
 
         except Exception as e:
@@ -387,7 +384,7 @@ class MQTTFrontend:
 
     def _on_message_received(self, topic, message, timestamp):
         """Callback for when a message is received"""
-        self._log_message(f"↙ {topic}: {message}")
+        self._log_message(f"{topic}: {message}")
 
     def _on_status_changed(self, status, message):
         """Callback for when connection status changes"""
