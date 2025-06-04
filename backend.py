@@ -14,6 +14,7 @@ class MQTTBackend:
         self.message_callback = message_callback
         self.status_callback = status_callback
         self.subscribed_topics = set()
+        self.current_topic = None  # Track currently subscribed topic
         
         # Ensure storage folder exists
         os.makedirs("./Storage/", exist_ok=True)
@@ -71,8 +72,9 @@ class MQTTBackend:
         
         self.client.subscribe(topic)
         self.subscribed_topics.add(topic)
+        self.current_topic = topic  # Track current topic
         return True
-    
+
     def unsubscribe(self, topic):
         """Unsubscribe from a topic"""
         if not self.client or not self.client.is_connected():
@@ -80,13 +82,25 @@ class MQTTBackend:
                 self.status_callback("error", "Not connected to broker")
             return False
         
+        # If no specific topic provided, unsubscribe from current topic
+        if not topic and self.current_topic:
+            topic = self.current_topic
+        
         if topic == "#":
+            # For wildcard topics, disconnect to properly unsubscribe
+            self.disconnect()
             if self.status_callback:
-                self.status_callback("error", f"Cannot unsubscribe from {topic} topics")
-            return False
+                self.status_callback("disconnected", "Disconnected to unsubscribe from wildcard topic")
+            self.current_topic = None
+            return True
             
         self.client.unsubscribe(topic)
         self.subscribed_topics.discard(topic)
+        
+        # Clear current topic if we unsubscribed from it
+        if topic == self.current_topic:
+            self.current_topic = None
+            
         return True
     
     def publish(self, topic, message):
@@ -296,3 +310,11 @@ class MQTTBackend:
     def __del__(self):
         """Cleanup on exit"""
         self.close()
+    
+    def get_current_topic(self):
+        """Get the currently subscribed topic"""
+        return self.current_topic
+    
+    def clear_current_topic(self):
+        """Clear the current topic tracking"""
+        self.current_topic = None

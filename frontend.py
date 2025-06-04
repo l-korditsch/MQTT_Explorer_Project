@@ -154,40 +154,51 @@ class MQTTFrontend:
         success = self.backend.connect(broker, port)
         if not success:
             self.status_label.config(text="Status: Error", foreground="red")
-    
     def _disconnect(self):
         """Handle disconnect button click"""
         if self.backend.disconnect():
             self._log_message("Disconnected from broker")
+            # Reset subscription state when disconnecting
+            self.subscribed_switch = False
+            self.backend.clear_current_topic()
         else:
             self._log_message("Error: Not connected to broker")
-    
+
     def _subscribe(self):
         """Handle subscribe button click"""
         topic = self.topic.get()
         
-        # Unsubscribe from previous topic if needed
-        try:
-            topics = self.backend.load_topics_from_file()
-            if isinstance(topics, list) and len(topics) > 0 and self.subscribed_switch:
-                last_topic = topics[-1]
-                self.backend.unsubscribe(last_topic)
-        except Exception:
-            pass
+        # Unsubscribe from previous topic if already subscribed
+        if self.subscribed_switch:
+            current_topic = self.backend.get_current_topic()
+            if current_topic:
+                self.backend.unsubscribe(current_topic)
+                self._log_message(f"Unsubscribed from previous topic: {current_topic}")
         
         # Store and subscribe to new topic
         if self.backend.store_topic_to_file(topic):
             self._refresh_topic_comboboxes()
-        
         if self.backend.subscribe(topic):
             self._log_message(f"Subscribed to {topic}")
             self.subscribed_switch = True
+        else:
+            self._log_message(f"Failed to subscribe to {topic}")
+            self.subscribed_switch = False
     
     def _unsubscribe(self):
         """Handle unsubscribe button click"""
-        topic = self.topic.get()
-        if self.backend.unsubscribe(topic):
-            self._log_message(f"Unsubscribed from {topic}")
+        # Get the current topic from the backend if available
+        current_topic = self.backend.get_current_topic()
+        
+        # If no current topic, use the topic from the UI
+        topic_to_unsubscribe = current_topic if current_topic else self.topic.get()
+        
+        if self.backend.unsubscribe(topic_to_unsubscribe):
+            self._log_message(f"Unsubscribed from {topic_to_unsubscribe}")
+            # Reset the subscribed state
+            self.subscribed_switch = False
+        else:
+            self._log_message(f"Failed to unsubscribe from {topic_to_unsubscribe}")
     
     def _publish(self):
         """Handle publish button click"""
@@ -318,7 +329,7 @@ class MQTTFrontend:
     def _on_message_received(self, topic, message, timestamp):
         """Callback for when a message is received"""
         self._log_message(f"{topic}: {message}")
-    
+        
     def _on_status_changed(self, status, message):
         """Callback for when connection status changes"""
         if status == "connected":
@@ -327,6 +338,9 @@ class MQTTFrontend:
         elif status == "disconnected":
             self.status_label.config(text="Status: Disconnected", foreground="red")
             self._log_message(message)
+            # Reset subscription state when disconnected
+            self.subscribed_switch = False
+            self.backend.clear_current_topic()
         elif status == "error":
             self.status_label.config(text="Status: Error", foreground="red")
             self._log_message(message)
