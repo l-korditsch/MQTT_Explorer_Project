@@ -138,7 +138,9 @@ class MQTTFrontend:
         self.show_db_btn.grid(row=0, column=2, padx=5, pady=5)
 
         self.show_db_ui_btn = ttk.Button(
-            self.msg_btn_frame, text="Show recent messages", command=self._show_database_in_ui
+            self.msg_btn_frame,
+            text="Show recent messages",
+            command=self._show_database_in_ui,
         )
         self.show_db_ui_btn.grid(row=0, column=3, padx=5, pady=5)
 
@@ -336,7 +338,7 @@ class MQTTFrontend:
             self._log_message("\n--- Recent Database Entries ---\n", False)
             for row in rows:
                 timestamp, topic, message = row
-                self._log_message(f"[{timestamp}] {topic}: {message}", False)
+                self._log_message(f"[{timestamp}] {topic}: {message}", False, True)
             self._log_message("--- End Database Entries ---\n", False)
 
         except Exception as e:
@@ -353,10 +355,13 @@ class MQTTFrontend:
             f"Autoscroll {'enabled' if self.autoscroll_enabled else 'disabled'}"
         )
 
-    def _log_message(self, message, show_time=True):
+    def _log_message(self, message, show_time=True, show_date=False):
         """Log message to UI"""
         if show_time:
-            current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            if show_date:
+                current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            else:
+                current_time = datetime.now().strftime("%H:%M:%S")
             self.messages.insert("end", f"[{current_time}] {message}\n")
         else:
             self.messages.insert("end", f"{message}\n")
