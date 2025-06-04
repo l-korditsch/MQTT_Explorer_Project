@@ -337,7 +337,7 @@ class MQTTFrontend:
             for row in rows:
                 timestamp, topic, message = row
                 self._log_message(f"[{timestamp}] {topic}: {message}", False)
-            self._log_message("\n--- End Database Entries ---\n", False)
+            self._log_message("--- End Database Entries ---\n", False)
 
         except Exception as e:
             self._log_message(f"Failed to show database: {e}")
