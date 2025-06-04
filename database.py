@@ -16,18 +16,32 @@ class MQTTDatabase:
     def _init_database(self):
         """Create the messages table if it doesn't exist"""
         c = self.conn.cursor()
-        c.execute(
-            """CREATE TABLE IF NOT EXISTS messages
-                    (timestamp TEXT, topic TEXT, message TEXT)"""
-        )
+
+        # Check if the table exists and has the old structure
+        c.execute("PRAGMA table_info(messages)")
+        columns = [column[1] for column in c.fetchall()]
+
+        if not columns:
+            # Table doesn't exist, create new table with direction field
+            c.execute(
+                """CREATE TABLE messages
+                        (timestamp TEXT, topic TEXT, message TEXT, direction TEXT)"""
+            )
+        elif "direction" not in columns:
+            # Table exists but doesn't have direction field, add it
+            c.execute(
+                "ALTER TABLE messages ADD COLUMN direction TEXT DEFAULT 'received'"
+            )
+
         self.conn.commit()
 
-    def save_message(self, timestamp, topic, message):
+    def save_message(self, timestamp, topic, message, direction="received"):
         """Save message to database"""
         with self.db_lock:
             c = self.conn.cursor()
             c.execute(
-                "INSERT INTO messages VALUES (?,?,?)", (timestamp, topic, message)
+                "INSERT INTO messages VALUES (?,?,?,?)",
+                (timestamp, topic, message, direction),
             )
             self.conn.commit()
 
@@ -63,9 +77,26 @@ class MQTTDatabase:
             # Create export data
             export_data = []
             for row in rows:
-                export_data.append(
-                    {"timestamp": row[0], "topic": row[1], "message": row[2]}
-                )
+                if len(row) == 4:
+                    # New format with direction
+                    export_data.append(
+                        {
+                            "timestamp": row[0],
+                            "topic": row[1],
+                            "message": row[2],
+                            "direction": row[3],
+                        }
+                    )
+                else:
+                    # Old format without direction (backward compatibility)
+                    export_data.append(
+                        {
+                            "timestamp": row[0],
+                            "topic": row[1],
+                            "message": row[2],
+                            "direction": "received",
+                        }
+                    )
 
             # Generate filename if not provided
             if not filepath:

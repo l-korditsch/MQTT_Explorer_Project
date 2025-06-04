@@ -112,6 +112,10 @@ class MQTTBackend:
                 self.status_callback("error", "Not connected to broker")
             return False
 
+        # Save published message to database
+        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        self.database.save_message(current_time, topic, message, "sent")
+
         self.client.publish(topic, message)
         return True
 
@@ -162,8 +166,8 @@ class MQTTBackend:
             # Handle non-UTF-8 payloads
             message = f"<Binary Data: {msg.payload.hex()}>"
 
-        # Save to database
-        self.database.save_message(current_time, msg.topic, message)
+        # Save to database with direction as "received"
+        self.database.save_message(current_time, msg.topic, message, "received")
 
         # Call message callback if provided
         if self.message_callback:
