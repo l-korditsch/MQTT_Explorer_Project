@@ -279,19 +279,19 @@ class MQTTFrontend:
 
         tree = ttk.Treeview(
             db_window,
-            columns=("Timestamp", "Topic", "Message", "Direction"),
+            columns=("Timestamp","Direction", "Topic", "Message"),
             show="headings",
         )
         tree.heading("Timestamp", text="Timestamp")
+        tree.heading("Direction", text="Direction")
         tree.heading("Topic", text="Topic")
         tree.heading("Message", text="Message")
-        tree.heading("Direction", text="Direction")
 
         # Configure column widths
         tree.column("Timestamp", width=100)
+        tree.column("Direction", width=80)
         tree.column("Topic", width=200)
         tree.column("Message", width=350)
-        tree.column("Direction", width=80)
 
         tree.grid(row=0, column=0, padx=5, pady=5, sticky="nsew")
 
