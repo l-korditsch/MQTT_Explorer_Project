@@ -336,7 +336,7 @@ class MQTTFrontend:
             self._log_message("--- Recent Database Entries ---")
             for row in rows:
                 timestamp, topic, message = row
-                self._log_message(f"[{timestamp}] {topic}: {message}\n")
+                self._log_message(f"[{timestamp}] {topic}: {message}")
             self._log_message("--- End Database Entries ---")
 
         except Exception as e:
