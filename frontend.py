@@ -333,11 +333,11 @@ class MQTTFrontend:
         try:
             rows = self.backend.get_database().get_recent_messages(10)
 
-            self._log_message("--- Recent Database Entries ---")
+            self._log_message("--- Recent Database Entries ---", False)
             for row in rows:
                 timestamp, topic, message = row
-                self._log_message(f"[{timestamp}] {topic}: {message}")
-            self._log_message("--- End Database Entries ---")
+                self._log_message(f"[{timestamp}] {topic}: {message}", False)
+            self._log_message("--- End Database Entries ---", False)
 
         except Exception as e:
             self._log_message(f"Failed to show database: {e}")
@@ -353,10 +353,13 @@ class MQTTFrontend:
             f"Autoscroll {'enabled' if self.autoscroll_enabled else 'disabled'}"
         )
 
-    def _log_message(self, message):
+    def _log_message(self, message, show_time=True):
         """Log message to UI"""
-        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        self.messages.insert("end", f"[{current_time}] {message}\n")
+        if show_time:
+            current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            self.messages.insert("end", f"[{current_time}] {message}\n")
+        else:
+            self.messages.insert("end", f"{message}\n")
         if self.autoscroll_enabled:
             self.messages.see("end")
 
