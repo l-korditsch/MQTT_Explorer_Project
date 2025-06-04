@@ -333,11 +333,11 @@ class MQTTFrontend:
         try:
             rows = self.backend.get_database().get_recent_messages(10)
 
-            self._log_message("--- Recent Database Entries ---", False)
+            self._log_message("\n--- Recent Database Entries ---\n", False)
             for row in rows:
                 timestamp, topic, message = row
                 self._log_message(f"[{timestamp}] {topic}: {message}", False)
-            self._log_message("--- End Database Entries ---", False)
+            self._log_message("\n--- End Database Entries ---\n", False)
 
         except Exception as e:
             self._log_message(f"Failed to show database: {e}")
