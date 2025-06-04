@@ -306,7 +306,7 @@ class MQTTFrontend:
             self._log_message("--- Recent Database Entries ---")
             for row in rows:
                 timestamp, topic, message = row
-                self._log_message(f"[{timestamp}] {topic}: {message}")
+                self._log_message(f"[{timestamp}] {topic}: {message}\n")
             self._log_message("--- End Database Entries ---")
             
         except Exception as e:
@@ -329,7 +329,7 @@ class MQTTFrontend:
     def _on_message_received(self, topic, message, timestamp):
         """Callback for when a message is received"""
         self._log_message(f"{topic}: {message}")
-        
+
     def _on_status_changed(self, status, message):
         """Callback for when connection status changes"""
         if status == "connected":
