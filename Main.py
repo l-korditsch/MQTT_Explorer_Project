@@ -126,6 +126,13 @@ class MQTTExplorer:
         
         self.messages = scrolledtext.ScrolledText(self.msg_frame, height=10, width=100)
         self.messages.grid(row=0, column=0, padx=5, pady=5, sticky="nsew")
+
+        # Tracking to display messages
+        self.messages.bind("<MouseWheel>", self.check_scroll_position)
+        self.messages.bind("<Button-4>", self.check_scroll_position)
+        self.messages.bind("<Button-5>", self.check_scroll_position)
+        self.messages.bind("<KeyRelease>", self.check_scroll_position)
+        self.messages.bind("<Motion>", self.check_scroll_position)
         
         # MQTT Client
         self.client = mqtt.Client()
@@ -590,11 +597,26 @@ class MQTTExplorer:
         self.toggle_scroll_btn.config(text=new_label)
         self.log_message(f"Autoscroll {'enabled' if self.autoscroll_enabled else 'disabled'}")
 
+    def check_scroll_position(self, event=None):
+        # Get current position
+        top, bottom = self.messages.yview()
+        
+        # If near the bottom (5%), enable autoscroll
+        if bottom >= 0.99:
+            if not self.autoscroll_enabled:
+                self.autoscroll_enabled = True
+                self.toggle_scroll_btn.config(text="Disable Autoscroll")
+                self.log_message("Autoscroll re-enabled (user at bottom)")
+        else:
+            if self.autoscroll_enabled:
+                self.autoscroll_enabled = False
+                self.toggle_scroll_btn.config(text="Enable Autoscroll")
+                self.log_message("Autoscroll disabled (user scrolled)")
+
+
 #TODO Add auto scaling of HUD to window size
 #TODO Prettefy the whole interface
 #TODO add possibility to press enter in text fields to substitute button press
-#TODO diasble to autoscroll on scroll
-#TODO if at the bottom of console enable autoscroll
 
 if __name__ == "__main__":
     root = tk.Tk()
