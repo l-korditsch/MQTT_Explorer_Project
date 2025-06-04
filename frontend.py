@@ -138,7 +138,7 @@ class MQTTFrontend:
         self.show_db_btn.grid(row=0, column=2, padx=5, pady=5)
 
         self.show_db_ui_btn = ttk.Button(
-            self.msg_btn_frame, text="Show DB in UI", command=self._show_database_in_ui
+            self.msg_btn_frame, text="Show recent messages", command=self._show_database_in_ui
         )
         self.show_db_ui_btn.grid(row=0, column=3, padx=5, pady=5)
 
