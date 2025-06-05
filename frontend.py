@@ -12,6 +12,10 @@ class MQTTFrontend:
         self.root = root
         self.root.title("MQTT Explorer")
 
+        # Test Style
+        style = ttk.Style(root)
+        style.theme_use("clam")
+
         # Configure main window
         self.root.columnconfigure(0, weight=1)
         self.root.rowconfigure(3, weight=1)
