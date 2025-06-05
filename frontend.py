@@ -3,6 +3,7 @@ from tkinter import ttk, scrolledtext
 import os
 from datetime import datetime
 from backend import MQTTBackend
+from functools import partial
 
 
 class MQTTFrontend:
@@ -68,6 +69,8 @@ class MQTTFrontend:
             self.conn_frame, text="Disconnect", command=self._disconnect
         )
         self.disconnect_btn.grid(row=4, column=0, columnspan=2, pady=5)
+        self.broker.bind("<Return>", lambda e: self._focus(self.port))
+        self.port.bind("<Return>", lambda e: self._connect())
 
     def _create_subscribe_frame(self):
         """Create subscribe frame"""
@@ -93,6 +96,7 @@ class MQTTFrontend:
             self.sub_frame, text="Unsubscribe", command=self._unsubscribe
         )
         self.unsubscribe_btn.grid(row=1, column=2, columnspan=2, pady=5)
+        self._bind_enter([self.topic], self._subscribe)
 
     def _create_publish_frame(self):
         """Create publish frame"""
@@ -112,6 +116,9 @@ class MQTTFrontend:
             self.pub_frame, text="Publish", command=self._publish
         )
         self.publish_btn.grid(row=2, column=0, columnspan=2, pady=5)
+        self._bind_enter([self.pub_topic, self.pub_message], self._publish)
+        self.pub_topic.bind("<Return>", lambda e: self._focus(self.pub_message))
+        self.pub_message.bind("<Return>", lambda e: self._publish())
 
     def _create_messages_frame(self):
         """Create messages frame"""
@@ -396,6 +403,11 @@ class MQTTFrontend:
                 self.toggle_scroll_btn.config(text="Enable Autoscroll")
                 self.log_message("Autoscroll disabled (user scrolled)")
 
+    def _focus(self, widget, _event=None):
+        """Move keyboard focus to *widget*."""
+        widget.focus_set()
+
+
     def _log_message(self, message, show_time=True, show_date=False):
         """Log message to UI"""
         if show_time:
@@ -427,6 +439,15 @@ class MQTTFrontend:
         elif status == "error":
             self.status_label.config(text="Status: Error", foreground="red")
             self._log_message(message)
+
+    def _bind_enter(self, widgets, callback):
+        """Bind the Return key on every widget in *widgets* to *callback*."""
+        for w in widgets:
+            w.bind("<Return>", partial(self._invoke_from_event, callback))
+
+    def _invoke_from_event(self, callback, _event):
+        """Wrapper so Tkinter passes the event obj but we ignore it."""
+        callback()
 
     def _refresh_broker_combobox(self):
         """Refresh broker combobox values"""
