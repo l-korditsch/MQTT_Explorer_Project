@@ -41,20 +41,21 @@ class MQTTFrontend:
         self.conn_frame = ttk.LabelFrame(
             self.root, text="Connection Settings", padding="5"
         )
-        self.conn_frame.grid(row=0, column=0, padx=5, pady=5, sticky="nsew")
+        self.conn_frame.grid(row=0, column=0, padx=5, pady=5, sticky="ew")
+        self.conn_frame.columnconfigure(1, weight=1)
 
         # Broker settings
         ttk.Label(self.conn_frame, text="Broker:").grid(row=0, column=0, padx=5, pady=5)
         self.broker = ttk.Combobox(self.conn_frame, width=30)
         self.broker["values"] = self.backend.load_brokers_from_file()
         self.broker.set("localhost")
-        self.broker.grid(row=0, column=1, padx=5, pady=5)
+        self.broker.grid(row=0, column=1, padx=5, pady=5, sticky="ew")
 
         ttk.Label(self.conn_frame, text="Port:").grid(row=1, column=0, padx=5, pady=5)
         self.port = ttk.Combobox(self.conn_frame, width=30)
         self.port["values"] = self.backend.load_ports_from_file()
         self.port.set("1883")
-        self.port.grid(row=1, column=1, padx=5, pady=5)
+        self.port.grid(row=1, column=1, padx=5, pady=5, sticky="ew")
 
         # Status indicator
         self.status_label = ttk.Label(
@@ -66,20 +67,21 @@ class MQTTFrontend:
         self.connect_btn = ttk.Button(
             self.conn_frame, text="Connect", command=self._connect
         )
-        self.connect_btn.grid(row=3, column=0, columnspan=2, pady=5)
+        self.connect_btn.grid(row=3, column=0, columnspan=2, pady=5, sticky="ew")
 
         # Disconnect button
         self.disconnect_btn = ttk.Button(
             self.conn_frame, text="Disconnect", command=self._disconnect
         )
-        self.disconnect_btn.grid(row=4, column=0, columnspan=2, pady=5)
+        self.disconnect_btn.grid(row=4, column=0, columnspan=2, pady=5, sticky="ew")
         self.broker.bind("<Return>", lambda e: self._focus(self.port))
         self.port.bind("<Return>", lambda e: self._connect())
 
     def _create_subscribe_frame(self):
         """Create subscribe frame"""
         self.sub_frame = ttk.LabelFrame(self.root, text="Subscribe", padding="5")
-        self.sub_frame.grid(row=1, column=0, padx=5, pady=5, sticky="nsew")
+        self.sub_frame.grid(row=1, column=0, padx=5, pady=5, sticky="ew")
+        self.sub_frame.columnconfigure(1, weight=1)
 
         ttk.Label(self.sub_frame, text="Topic:").grid(row=0, column=0, padx=5, pady=5)
 
@@ -87,39 +89,40 @@ class MQTTFrontend:
         self.topic = ttk.Combobox(self.sub_frame, width=30)
         self.topic["values"] = self.backend.load_topics_from_file()
         self.topic.set("#")
-        self.topic.grid(row=0, column=1, padx=5, pady=5)
+        self.topic.grid(row=0, column=1, padx=5, pady=5, sticky="ew")
 
         # Subscribe button
         self.subscribe_btn = ttk.Button(
             self.sub_frame, text="Subscribe", command=self._subscribe
         )
-        self.subscribe_btn.grid(row=1, column=0, columnspan=2, pady=5)
+        self.subscribe_btn.grid(row=1, column=0, columnspan=2, pady=5, sticky="ew")
 
         # Unsubscribe button
         self.unsubscribe_btn = ttk.Button(
             self.sub_frame, text="Unsubscribe", command=self._unsubscribe
         )
-        self.unsubscribe_btn.grid(row=1, column=2, columnspan=2, pady=5)
+        self.unsubscribe_btn.grid(row=1, column=2, columnspan=2, pady=5, sticky="ew")
         self._bind_enter([self.topic], self._subscribe)
 
     def _create_publish_frame(self):
         """Create publish frame"""
         self.pub_frame = ttk.LabelFrame(self.root, text="Publish", padding="5")
-        self.pub_frame.grid(row=2, column=0, padx=5, pady=5, sticky="nsew")
+        self.pub_frame.grid(row=2, column=0, padx=5, pady=5, sticky="ew")
+        self.pub_frame.columnconfigure(1, weight=1)
 
         ttk.Label(self.pub_frame, text="Topic:").grid(row=0, column=0, padx=5, pady=5)
         self.pub_topic = ttk.Combobox(self.pub_frame, width=30)
         self.pub_topic["values"] = self.backend.load_topics_from_file()
-        self.pub_topic.grid(row=0, column=1, padx=5, pady=5)
+        self.pub_topic.grid(row=0, column=1, padx=5, pady=5, sticky="ew")
 
         ttk.Label(self.pub_frame, text="Message:").grid(row=1, column=0, padx=5, pady=5)
         self.pub_message = ttk.Entry(self.pub_frame, width=30)
-        self.pub_message.grid(row=1, column=1, padx=5, pady=5)
+        self.pub_message.grid(row=1, column=1, padx=5, pady=5, sticky="ew")
 
         self.publish_btn = ttk.Button(
             self.pub_frame, text="Publish", command=self._publish
         )
-        self.publish_btn.grid(row=2, column=0, columnspan=2, pady=5)
+        self.publish_btn.grid(row=2, column=0, columnspan=2, pady=5, sticky="ew")
         self._bind_enter([self.pub_topic, self.pub_message], self._publish)
         self.pub_topic.bind("<Return>", lambda e: self._focus(self.pub_message))
         self.pub_message.bind("<Return>", lambda e: self._publish())
@@ -128,39 +131,43 @@ class MQTTFrontend:
         """Create messages frame"""
         self.msg_frame = ttk.LabelFrame(self.root, text="Messages", padding="5")
         self.msg_frame.grid(row=3, column=0, padx=5, pady=5, sticky="nsew")
+        self.msg_frame.rowconfigure(0, weight=1)
+        self.msg_frame.columnconfigure(0, weight=1)
 
         # Button frame for message controls
         self.msg_btn_frame = ttk.Frame(self.msg_frame)
         self.msg_btn_frame.grid(row=1, column=0, padx=5, pady=5, sticky="ew")
+        for i in range(5):
+            self.msg_btn_frame.columnconfigure(i, weight=1)
 
         self.clear_msg_btn = ttk.Button(
             self.msg_btn_frame, text="Clear Messages", command=self._clear_messages
         )
-        self.clear_msg_btn.grid(row=0, column=0, padx=5, pady=5)
+        self.clear_msg_btn.grid(row=0, column=0, padx=5, pady=5, sticky="ew")
 
         self.clear_db_btn = ttk.Button(
             self.msg_btn_frame, text="Clear Database", command=self._clear_database
         )
-        self.clear_db_btn.grid(row=0, column=1, padx=5, pady=5)
+        self.clear_db_btn.grid(row=0, column=1, padx=5, pady=5, sticky="ew")
 
         self.show_db_btn = ttk.Button(
             self.msg_btn_frame, text="Show Database", command=self._show_database_window
         )
-        self.show_db_btn.grid(row=0, column=2, padx=5, pady=5)
+        self.show_db_btn.grid(row=0, column=2, padx=5, pady=5, sticky="ew")
 
         self.show_db_ui_btn = ttk.Button(
             self.msg_btn_frame,
             text="Show recent messages",
             command=self._show_database_in_ui,
         )
-        self.show_db_ui_btn.grid(row=0, column=3, padx=5, pady=5)
+        self.show_db_ui_btn.grid(row=0, column=3, padx=5, pady=5, sticky="ew")
 
         self.toggle_scroll_btn = ttk.Button(
             self.msg_btn_frame,
             text="Disable Autoscroll",
             command=self._toggle_autoscroll,
         )
-        self.toggle_scroll_btn.grid(row=0, column=4, padx=5, pady=5)
+        self.toggle_scroll_btn.grid(row=0, column=4, padx=5, pady=5, sticky="ew")
 
         self.messages = scrolledtext.ScrolledText(self.msg_frame, height=10, width=100)
         self.messages.grid(row=0, column=0, padx=5, pady=5, sticky="nsew")
@@ -394,23 +401,22 @@ class MQTTFrontend:
     def check_scroll_position(self, event=None):
         # Get current position
         top, bottom = self.messages.yview()
-        
+
         # If near the bottom (5%), enable autoscroll
         if bottom >= 0.99:
             if not self.autoscroll_enabled:
                 self.autoscroll_enabled = True
                 self.toggle_scroll_btn.config(text="Disable Autoscroll")
-                self.log_message("Autoscroll re-enabled (user at bottom)")
+                self._log_message("Autoscroll re-enabled (user at bottom)")
         else:
             if self.autoscroll_enabled:
                 self.autoscroll_enabled = False
                 self.toggle_scroll_btn.config(text="Enable Autoscroll")
-                self.log_message("Autoscroll disabled (user scrolled)")
+                self._log_message("Autoscroll disabled (user scrolled)")
 
     def _focus(self, widget, _event=None):
         """Move keyboard focus to *widget*."""
         widget.focus_set()
-
 
     def _log_message(self, message, show_time=True, show_date=False):
         """Log message to UI"""
