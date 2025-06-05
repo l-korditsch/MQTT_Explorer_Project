@@ -276,10 +276,9 @@ class MQTTFrontend:
         # Add count label
         count_label = ttk.Label(control_frame, text="")
         count_label.grid(row=0, column=2, padx=20, pady=5)
-
         tree = ttk.Treeview(
             db_window,
-            columns=("Timestamp","Direction", "Topic", "Message"),
+            columns=("Timestamp", "Direction", "Topic", "Message"),
             show="headings",
         )
         tree.heading("Timestamp", text="Timestamp")
@@ -311,13 +310,18 @@ class MQTTFrontend:
         """Refresh the database view with current data"""
         # Clear existing items
         for item in tree.get_children():
-            tree.delete(item)
-
-        # Insert data into the treeview
+            tree.delete(item)  # Insert data into the treeview
         try:
             rows = self.backend.get_database().get_all_messages()
             for row in rows:
-                tree.insert("", "end", values=row)
+                # Reorder columns: (timestamp, topic, message, direction) -> (timestamp, direction, topic, message)
+                if len(row) == 4:
+                    timestamp, topic, message, direction = row
+                    reordered_row = (timestamp, direction, topic, message)
+                    tree.insert("", "end", values=reordered_row)
+                else:
+                    # Handle case where direction column might not exist (backward compatibility)
+                    tree.insert("", "end", values=row)
 
             # Update count if label provided
             if count_label:
