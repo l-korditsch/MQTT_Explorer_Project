@@ -154,6 +154,13 @@ class MQTTFrontend:
         self.messages = scrolledtext.ScrolledText(self.msg_frame, height=10, width=100)
         self.messages.grid(row=0, column=0, padx=5, pady=5, sticky="nsew")
 
+        # Tracking to display messages
+        self.messages.bind("<MouseWheel>", self.check_scroll_position)
+        self.messages.bind("<Button-4>", self.check_scroll_position)
+        self.messages.bind("<Button-5>", self.check_scroll_position)
+        self.messages.bind("<KeyRelease>", self.check_scroll_position)
+        self.messages.bind("<Motion>", self.check_scroll_position)
+
     def _connect(self):
         """Handle connect button click"""
         broker = self.broker.get()
@@ -372,6 +379,22 @@ class MQTTFrontend:
         self._log_message(
             f"Autoscroll {'enabled' if self.autoscroll_enabled else 'disabled'}"
         )
+
+    def check_scroll_position(self, event=None):
+        # Get current position
+        top, bottom = self.messages.yview()
+        
+        # If near the bottom (5%), enable autoscroll
+        if bottom >= 0.99:
+            if not self.autoscroll_enabled:
+                self.autoscroll_enabled = True
+                self.toggle_scroll_btn.config(text="Disable Autoscroll")
+                self.log_message("Autoscroll re-enabled (user at bottom)")
+        else:
+            if self.autoscroll_enabled:
+                self.autoscroll_enabled = False
+                self.toggle_scroll_btn.config(text="Enable Autoscroll")
+                self.log_message("Autoscroll disabled (user scrolled)")
 
     def _log_message(self, message, show_time=True, show_date=False):
         """Log message to UI"""
