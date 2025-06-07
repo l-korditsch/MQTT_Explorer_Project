@@ -35,6 +35,7 @@ class MQTTFrontend:
         self._create_subscribe_frame()
         self._create_publish_frame()
         self._create_messages_frame()
+        self._create_search_frame()  # <-- Add this line
 
     def _create_connection_frame(self):
         """Create connection settings frame"""
@@ -178,6 +179,27 @@ class MQTTFrontend:
         self.messages.bind("<Button-5>", self.check_scroll_position)
         self.messages.bind("<KeyRelease>", self.check_scroll_position)
         self.messages.bind("<Motion>", self.check_scroll_position)
+
+    def _create_search_frame(self):
+        """Create search frame for topics and messages"""
+        self.search_frame = ttk.LabelFrame(self.root, text="Search", padding="5")
+        self.search_frame.grid(row=5, column=0, padx=5, pady=5, sticky="ew")
+        self.search_frame.columnconfigure(1, weight=1)
+
+        ttk.Label(self.search_frame, text="Search:").grid(row=0, column=0, padx=5, pady=5)
+        self.search_entry = ttk.Entry(self.search_frame, width=30)
+        self.search_entry.grid(row=0, column=1, padx=5, pady=5, sticky="ew")
+        self.search_entry.bind("<Return>", lambda e: self._search_messages())
+
+        self.search_btn = ttk.Button(
+            self.search_frame, text="Search", command=self._search_messages
+        )
+        self.search_btn.grid(row=0, column=2, padx=5, pady=5)
+
+        self.clear_search_btn = ttk.Button(
+            self.search_frame, text="Clear Search", command=self._clear_search
+        )
+        self.clear_search_btn.grid(row=0, column=3, padx=5, pady=5)
 
     def _connect(self):
         """Handle connect button click"""
@@ -498,3 +520,30 @@ class MQTTFrontend:
     def __del__(self):
         """Cleanup on exit"""
         self.close()
+
+    def _search_messages(self):
+        """Search for topics or messages in the displayed messages"""
+        query = self.search_entry.get().strip().lower()
+        if not query:
+            return
+
+        # Get all text from the messages widget
+        all_text = self.messages.get("1.0", tk.END)
+        lines = all_text.splitlines()
+
+        # Filter lines that contain the query
+        results = [line for line in lines if query in line.lower()]
+
+        # Show results in the messages widget
+        self.messages.delete("1.0", tk.END)
+        if results:
+            for line in results:
+                self.messages.insert(tk.END, line + "\n")
+            self._log_message(f"Search results for '{query}': {len(results)} found", show_time=False)
+        else:
+            self._log_message(f"No results found for '{query}'", show_time=False)
+
+    def _clear_search(self):
+        """Clear search and show all messages again (if you want to reload from DB, adapt here)"""
+        self.messages.delete("1.0", tk.END)
+        self._log_message("Search cleared. Only new messages will be shown.", show_time=False)
