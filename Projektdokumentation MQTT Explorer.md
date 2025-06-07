@@ -71,7 +71,7 @@ Das Projekt ist in mehrere Python-Module unterteilt:
 ## 6. Nutzung & Installation
 
 1. **Repository klonen:**  
-   `git clone https://github.com/yourusername/mqtt-explorer-project.git`
+   `git clone https://github.com/l-korditsch/MQTT_Explorer_Project.git`
 2. **Abhängigkeiten installieren:**  
    `pip install paho-mqtt`
 3. **Programm starten:**  
