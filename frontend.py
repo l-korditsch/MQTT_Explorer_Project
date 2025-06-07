@@ -188,6 +188,14 @@ class MQTTFrontend:
             self._log_message("Error: Invalid port number")
             return
 
+        if port == 42:
+            import tkinter.messagebox
+
+            tkinter.messagebox.showinfo(
+                "Easter Egg",
+                "42 ist die Antwort auf alles – aber vielleicht nicht der beste MQTT-Port 😉",
+            )
+
         # Store connection details
         if self.backend.store_port_to_file(str(port)):
             self._refresh_port_combobox()
@@ -254,6 +262,14 @@ class MQTTFrontend:
         """Handle publish button click"""
         topic = self.pub_topic.get()
         message = self.pub_message.get()
+
+        if "antwort auf alles" in message.lower():
+            import tkinter.messagebox
+
+            tkinter.messagebox.showinfo(
+                "42",
+                "Die Antwort auf die ultimative Frage des Lebens, des Universums und allem ist: 42",
+            )
 
         if self.backend.publish(topic, message):
             self._log_message(f"Published to {topic}: {message}")
