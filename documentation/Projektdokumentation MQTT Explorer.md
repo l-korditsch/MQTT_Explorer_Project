@@ -24,6 +24,8 @@ Der MQTT Explorer ist ein objektorientiertes Python-Programm mit grafischer Ober
 - **Autoskalierung:**  
   Die grafische Oberfläche passt sich automatisch der Fenstergröße an.
 
+**Sequenzdiagramm:**  
+*(siehe beigefügtes Klassendiagramm als Bild)*
 ---
 
 ## 3. Architektur & Aufbau
@@ -36,7 +38,7 @@ Das Projekt ist in mehrere Python-Module unterteilt:
 - **database.py:** Verwaltet die Speicherung und den Zugriff auf Nachrichten (SQLite).
 
 **Klassendiagramm:**  
-*(siehe beigefügtes Klassendiagramm als Bild oder PlantUML-Code)*
+*(siehe beigefügtes Klassendiagramm als Bild)*
 
 ---
 
@@ -92,6 +94,7 @@ Das Projekt erfüllt die Anforderungen des Product Owners:
 
 ## 8. Anhang
 
-- Klassendiagramm (siehe PlantUML-Code im Repository)
+- Klassendiagramm (siehe Bild im Repository)
+- Sequenzdiagramm (siehe Bild im Repository)
 - Beispiel-Screenshots der Anwendung
 - Quellcode im GitHub-Repository
